@@ -1,0 +1,33 @@
+[
+  {
+    "obs": "Roteiro para Adicionar CDS Views em Replication Flow"
+  },
+  {
+    "obs": "Campo CDS",
+    "x": 340,
+    "y": 535,
+    "acao": "double_click"
+  },
+  {
+    "obs": "CSV CDS",
+    "acao": "reg_table:CDS"
+  },
+  {
+    "obs": "Pesquisa CDS",
+    "acao": "press:enter"
+  },
+  {
+    "obs": "Exemplo",
+    "acao": "wait:4"
+  },
+  {
+    "obs": "Seleciona na Lista",
+    "x": 800,
+    "y": 700,
+    "acao": "click"
+  },
+  {
+    "obs": "Exemplo",
+    "acao": "wait:1"
+  }
+]

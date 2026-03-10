@@ -1,0 +1,10 @@
+[
+  {
+    "obs": "Exemplo",
+    "acao": "wait:0.3"
+  },
+  {
+    "obs": "Exemplo com tabela selecionada",
+    "acao": "reg_table:NOME"
+  }
+]
