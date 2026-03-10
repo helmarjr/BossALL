@@ -39,11 +39,15 @@ def trocar_prefixo_tabela_rf(texto: str) -> str:
     texto = str(texto).strip()
 
     prefixo_antigo = "ZS4_VCI_"
+    prefixo_antigo2 = "VC_INTEGRATION_"
+
     prefixo_novo = "S4H_TB_"
 
     if texto.startswith(prefixo_antigo):
         return prefixo_novo + texto[len(prefixo_antigo):]
-
+    
+    elif texto.startswith(prefixo_antigo2):
+        return prefixo_novo + texto[len(prefixo_antigo2):]
     return texto
 
 TRANSFORMACOES = {
