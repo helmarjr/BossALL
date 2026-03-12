@@ -235,6 +235,7 @@ class ScriptRunner:
             for step_index, step in enumerate(steps, start=1):
                 if self.is_stop_requested():
                     self.log("Execução interrompida pelo usuário.", ConsoleTag.WARNING.value)
+                    self._rollback_tables(acquired_tables, table_contexts)
                     return
 
                 self._execute_step(step, step_index, context)
