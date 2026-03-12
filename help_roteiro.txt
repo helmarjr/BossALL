@@ -1,0 +1,261 @@
+COMANDOS DISPONÍVEIS NO ROTEIRO (JSON)
+
+============================================================
+1) ESTRUTURA GERAL
+============================================================
+
+O roteiro deve ser uma LISTA JSON.
+
+Exemplo:
+[
+  {
+    "info": "Mover mouse",
+    "esperar": {"antes": 0.3, "depois": 0.2},
+    "mouse": {"x": 250, "y": 620, "acao": "mover"}
+  },
+  {
+    "info": "Clique esquerdo",
+    "mouse": {"x": 250, "y": 620, "acao": "clicar_esquerdo"}
+  },
+  {
+    "info": "Digita texto fixo",
+    "teclado": {"digitar": "Teste"}
+  }
+]
+
+============================================================
+2) ITENS POSSÍVEIS EM CADA OBJETO DO ROTEIRO
+============================================================
+
+Cada item pode ter:
+- "info"
+- "esperar"
+- "mouse"
+- "teclado"
+- "repetir"
+
+Regras:
+- Cada item deve ter somente 1 ação principal: OU "mouse" OU "teclado".
+- Não use "mouse" e "teclado" juntos no mesmo item.
+- "repetir" repete o item atual.
+- "esperar" pode ser usado antes e/ou depois do item.
+- "info" é apenas descritivo e aparece no console.
+
+============================================================
+3) DETALHE DE CADA ITEM
+============================================================
+
+3.1) info
+------------------------------------------------------------
+Formato:
+"info": "Texto informacional"
+
+3.2) esperar
+------------------------------------------------------------
+Formato:
+"esperar": {
+  "antes": 1,
+  "depois": 1
+}
+
+Subitens possíveis:
+- antes  -> tempo em segundos antes da ação
+- depois -> tempo em segundos depois da ação
+
+3.3) repetir
+------------------------------------------------------------
+Formatos aceitos:
+"repetir": 3
+"repetir": "3"
+"repetir": "i+1"
+
+Observação:
+- i é o índice da iteração externa, começando em 0.
+
+============================================================
+4) ITEM MOUSE
+============================================================
+
+Formato:
+"mouse": {
+  "x": 150,
+  "y": 150,
+  "acao": "clicar_direito"
+}
+
+Subitens possíveis:
+- x
+- y
+- acao
+
+Ações permitidas em mouse.acao:
+- mover
+- clicar_esquerdo
+- clicar_direito
+- clicar_duplo
+- clicar_segurar
+- clicar_soltar
+
+Observação:
+- Todas as ações de mouse exigem x e y.
+
+============================================================
+5) ITEM TECLADO
+============================================================
+
+Formato:
+"teclado": {
+  "digitar": "texto"
+}
+
+O objeto "teclado" deve ter UMA chave principal por item.
+
+Subitens possíveis:
+- digitar
+- atalho
+- pressionar
+- campo_tabela
+- funcao_py
+
+5.1) teclado.digitar
+------------------------------------------------------------
+Digita ou cola um texto no campo atual.
+
+Formato:
+"teclado": {"digitar": "meu texto"}
+
+Também aceita placeholder:
+"teclado": {"digitar": "Item_{i}"}
+
+5.2) teclado.atalho
+------------------------------------------------------------
+Executa hotkey com pyautogui.hotkey.
+
+Exemplos:
+"teclado": {"atalho": "ctrl+s"}
+"teclado": {"atalho": "ctrl+f"}
+"teclado": {"atalho": "ctrl+a"}
+
+5.3) teclado.pressionar
+------------------------------------------------------------
+Pressiona uma tecla específica com pyautogui.press.
+
+Formato:
+"teclado": {"pressionar": "enter"}
+
+Teclas comuns:
+- enter
+- tab
+- up
+- down
+- left
+- right
+- esc
+- backspace
+- delete
+- home
+- end
+- pageup
+- pagedown
+- space
+
+5.4) teclado.campo_tabela
+------------------------------------------------------------
+Busca o próximo registro pendente em uma tabela CSV e usa o valor do campo informado.
+
+Formatos:
+a) usando a tabela selecionada no dropdown:
+"teclado": {"campo_tabela": "NOME"}
+
+b) usando tabela específica:
+"teclado": {"campo_tabela": "clientes.EMAIL"}
+
+Regras:
+1. Sem ponto:
+   - usa a tabela selecionada no dropdown principal
+2. Com ponto:
+   - primeiro nome = nome da tabela sem .csv
+   - segundo nome = coluna
+3. Toda vez que um campo_tabela for usado:
+   - o app captura o próximo registro pendente daquela tabela
+   - o registro fica reservado na iteração atual
+   - ao final da iteração bem-sucedida, STATUS = OK
+4. O app pode usar mais de uma tabela no mesmo roteiro.
+
+5.5) teclado.funcao_py
+------------------------------------------------------------
+Usa uma função do arquivo transformacoes.py.
+
+Formato:
+"teclado": {"funcao_py": "NOME_DA_FUNCAO"}
+
+Comportamento:
+- copia o texto selecionado
+- envia esse texto como input da função
+- recebe o retorno
+- cola o retorno no campo selecionado
+
+============================================================
+6) PLACEHOLDERS
+============================================================
+
+Suportado:
+- {i}
+
+============================================================
+7) EXEMPLO COMPLETO
+============================================================
+
+[
+  {
+    "info": "Mover até o campo",
+    "esperar": {"antes": 0.3, "depois": 0.2},
+    "mouse": {"x": 250, "y": 620, "acao": "mover"}
+  },
+  {
+    "info": "Clicar no campo",
+    "mouse": {"x": 250, "y": 620, "acao": "clicar_esquerdo"}
+  },
+  {
+    "info": "Digitar valor da tabela padrão",
+    "teclado": {"campo_tabela": "NOME"}
+  },
+  {
+    "info": "Pressionar TAB 2 vezes",
+    "repetir": 2,
+    "teclado": {"pressionar": "tab"}
+  },
+  {
+    "info": "Salvar",
+    "teclado": {"atalho": "ctrl+s"}
+  }
+]
+
+============================================================
+8) REGRAS DAS TABELAS CSV
+============================================================
+
+- Separador preferencial: ;
+- Deve possuir cabeçalho
+- Se STATUS não existir, o app cria
+- STATUS=OK significa registro já consumido
+- Registros com STATUS=OK não são reutilizados
+- O OK é gravado ao final da iteração executada com sucesso
+- Pode haver uso de múltiplas tabelas no mesmo roteiro
+
+============================================================
+9) CONSOLE
+============================================================
+
+- O console é limpo automaticamente antes de cada execução
+- A linha de iteração aparece em negrito:
+  --- Iteração X/Y ---
+- Cada item do JSON é logado em uma única linha
+- Ao final da iteração o tempo total aparece em vermelho
+
+============================================================
+10) SEGURANÇA
+============================================================
+
+- O FAILSAFE do pyautogui está ativo
+- Mova o mouse para o canto superior esquerdo para interromper por FAILSAFE

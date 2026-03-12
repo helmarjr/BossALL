@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import csv
@@ -7,6 +8,7 @@ import re
 import threading
 import time
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 from typing import Any, Callable
 
@@ -23,488 +25,56 @@ except ImportError:
 from transformacoes import TRANSFORMACOES
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-APP_DIR = BASE_DIR / "app"
-ROTEIROS_DIR = BASE_DIR / "pyBossAll\\roteiros"
-TABELAS_DIR = BASE_DIR / "pyBossAll\\tabelas"
+class Paths:
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    APP_DIR = BASE_DIR / "app"
+    ROTEIROS_DIR = BASE_DIR / "pyBossAll" / "roteiros"
+    TABELAS_DIR = BASE_DIR / "pyBossAll" / "tabelas"
+    HELP_FILE = Path(__file__).resolve().with_name("help_roteiro.txt")
 
-for pasta in (APP_DIR, ROTEIROS_DIR, TABELAS_DIR):
-    pasta.mkdir(parents=True, exist_ok=True)
+    @classmethod
+    def ensure_dirs(cls) -> None:
+        for folder in (cls.APP_DIR, cls.ROTEIROS_DIR, cls.TABELAS_DIR):
+            folder.mkdir(parents=True, exist_ok=True)
 
+
+Paths.ensure_dirs()
 pyautogui.FAILSAFE = True
 
 
-HELP_TEXT = """COMANDOS DISPONÍVEIS NO ROTEIRO (JSON)
-
-============================================================
-1) ESTRUTURA GERAL
-============================================================
-
-O roteiro deve ser uma LISTA JSON.
-
-Exemplo:
-[
+DEFAULT_SCRIPT = """[
   {
-    "info": "Mover mouse",
-    "esperar": {"antes": 0.3, "depois": 0.2},
-    "mouse": {"x": 250, "y": 620, "acao": "mover"}
+    \"info\": \"Exemplo mouse\",
+    \"mouse\": {\"x\": 250, \"y\": 620, \"acao\": \"clicar_esquerdo\"}
   },
   {
-    "info": "Clique esquerdo",
-    "mouse": {"x": 250, "y": 620, "acao": "clicar_esquerdo"}
+    \"info\": \"Exemplo com tabela selecionada\",
+    \"teclado\": {\"campo_tabela\": \"NOME\"}
   },
   {
-    "info": "Digita texto fixo",
-    "teclado": {"digitar": "Teste"}
+    \"info\": \"Exemplo pressionar ENTER\",
+    \"teclado\": {\"pressionar\": \"enter\"}
   }
-]
-
-============================================================
-2) ITENS POSSÍVEIS EM CADA OBJETO DO ROTEIRO
-============================================================
-
-Cada item pode ter:
-- "info"
-- "esperar"
-- "mouse"
-- "teclado"
-- "repetir"
-
-Regras:
-- Cada item deve ter somente 1 ação principal:
-  OU "mouse"
-  OU "teclado"
-- Não use "mouse" e "teclado" juntos no mesmo item.
-- "repetir" repete o item atual.
-- "esperar" pode ser usado antes e/ou depois do item.
-- "info" é apenas descritivo e aparece no console.
-
-============================================================
-3) DETALHE DE CADA ITEM
-============================================================
-
-3.1) info
-------------------------------------------------------------
-
-Formato:
-"info": "Texto informacional"
-
-Exemplo:
-{
-  "info": "Abrir busca",
-  "teclado": {"atalho": "ctrl+f"}
-}
-
-============================================================
-3.2) esperar
-------------------------------------------------------------
-
-Formato:
-"esperar": {
-  "antes": 1,
-  "depois": 1
-}
-
-Subitens possíveis:
-- antes  -> tempo em segundos antes da ação
-- depois -> tempo em segundos depois da ação
-
-Exemplos:
-{
-  "info": "Aguardar antes",
-  "esperar": {"antes": 1},
-  "teclado": {"pressionar": "enter"}
-}
-
-{
-  "info": "Aguardar depois",
-  "esperar": {"depois": 1.5},
-  "teclado": {"pressionar": "tab"}
-}
-
-{
-  "info": "Aguardar antes e depois",
-  "esperar": {"antes": 0.5, "depois": 0.5},
-  "mouse": {"x": 100, "y": 200, "acao": "clicar_esquerdo"}
-}
-
-============================================================
-3.3) repetir
-------------------------------------------------------------
-
-Formato:
-"repetir": 3
-
-ou
-
-"repetir": "3"
-
-ou expressão com i:
-"repetir": "i+1"
-
-Observação:
-- i é o índice da iteração externa, começando em 0.
-- Se estiver na 1ª iteração, i = 0.
-- Se estiver na 2ª iteração, i = 1.
-
-Exemplos:
-{
-  "info": "Pressionar TAB 3 vezes",
-  "repetir": 3,
-  "teclado": {"pressionar": "tab"}
-}
-
-{
-  "info": "Repete conforme iteração externa",
-  "repetir": "i+1",
-  "teclado": {"pressionar": "down"}
-}
-
-============================================================
-4) ITEM MOUSE
-============================================================
-
-Formato:
-"mouse": {
-  "x": 150,
-  "y": 150,
-  "acao": "clicar_direito"
-}
-
-Subitens possíveis:
-- x
-- y
-- acao
-
-============================================================
-4.1) mouse.x
-------------------------------------------------------------
-
-Coordenada X da tela.
-
-Formato:
-"x": 150
-
-Também pode ser texto com placeholder:
-"x": "{i}"
-
-============================================================
-4.2) mouse.y
-------------------------------------------------------------
-
-Coordenada Y da tela.
-
-Formato:
-"y": 150
-
-Também pode ser texto com placeholder:
-"y": "{i}"
-
-============================================================
-4.3) mouse.acao
-------------------------------------------------------------
-
-Valores permitidos:
-- "mover"
-- "clicar_esquerdo"
-- "clicar_direito"
-- "clicar_duplo"
-- "clicar_segurar"
-- "clicar_soltar"
-
-Exemplos:
-{
-  "info": "Mover mouse",
-  "mouse": {"x": 100, "y": 200, "acao": "mover"}
-}
-
-{
-  "info": "Clique esquerdo",
-  "mouse": {"x": 100, "y": 200, "acao": "clicar_esquerdo"}
-}
-
-{
-  "info": "Clique direito",
-  "mouse": {"x": 100, "y": 200, "acao": "clicar_direito"}
-}
-
-{
-  "info": "Duplo clique",
-  "mouse": {"x": 100, "y": 200, "acao": "clicar_duplo"}
-}
-
-{
-  "info": "Segurar clique",
-  "mouse": {"x": 100, "y": 200, "acao": "clicar_segurar"}
-}
-
-{
-  "info": "Soltar clique",
-  "mouse": {"x": 100, "y": 200, "acao": "clicar_soltar"}
-}
-
-Observação:
-- Todas as ações de mouse exigem x e y.
-
-============================================================
-5) ITEM TECLADO
-============================================================
-
-Formato:
-"teclado": {
-  "digitar": "texto"
-}
-
-O objeto "teclado" deve ter UMA chave principal por item.
-
-Subitens possíveis:
-- "digitar"
-- "atalho"
-- "pressionar"
-- "campo_tabela"
-- "funcao_py"
-
-============================================================
-5.1) teclado.digitar
-------------------------------------------------------------
-
-Digita ou cola um texto no campo atual.
-
-Formato:
-"teclado": {"digitar": "meu texto"}
-
-Exemplo:
-{
-  "info": "Digita texto fixo",
-  "teclado": {"digitar": "ZS4_VCI_A003"}
-}
-
-Também aceita placeholder:
-{
-  "info": "Digita índice da iteração",
-  "teclado": {"digitar": "Item_{i}"}
-}
-
-============================================================
-5.2) teclado.atalho
-------------------------------------------------------------
-
-Executa hotkey com pyautogui.hotkey.
-
-Formato:
-"teclado": {"atalho": "ctrl+s"}
-
-Exemplos:
-{
-  "info": "Salvar",
-  "teclado": {"atalho": "ctrl+s"}
-}
-
-{
-  "info": "Localizar",
-  "teclado": {"atalho": "ctrl+f"}
-}
-
-{
-  "info": "Selecionar tudo",
-  "teclado": {"atalho": "ctrl+a"}
-}
-
-============================================================
-5.3) teclado.pressionar
-------------------------------------------------------------
-
-Pressiona uma tecla específica com pyautogui.press.
-
-Formato:
-"teclado": {"pressionar": "enter"}
-
-Teclas comuns:
-- enter
-- tab
-- up
-- down
-- left
-- right
-- esc
-- backspace
-- delete
-- home
-- end
-- pageup
-- pagedown
-- space
-
-Exemplos:
-{
-  "info": "Confirmar",
-  "teclado": {"pressionar": "enter"}
-}
-
-{
-  "info": "Próximo campo",
-  "teclado": {"pressionar": "tab"}
-}
-
-{
-  "info": "Seta para cima",
-  "teclado": {"pressionar": "up"}
-}
-
-{
-  "info": "Seta para baixo",
-  "teclado": {"pressionar": "down"}
-}
-
-{
-  "info": "Seta para direita",
-  "teclado": {"pressionar": "right"}
-}
-
-{
-  "info": "Seta para esquerda",
-  "teclado": {"pressionar": "left"}
-}
-
-============================================================
-5.4) teclado.campo_tabela
-------------------------------------------------------------
-
-Busca o próximo registro pendente em uma tabela CSV e usa o valor do campo informado.
-
-Formatos:
-a) usando a tabela selecionada no dropdown:
-"teclado": {"campo_tabela": "NOME"}
-
-b) usando tabela específica:
-"teclado": {"campo_tabela": "clientes.EMAIL"}
-
-Regras:
-1. Sem ponto:
-   - usa a tabela selecionada no dropdown principal
-   - exemplo: "NOME"
-
-2. Com ponto:
-   - primeiro nome = nome da tabela sem .csv
-   - segundo nome = coluna
-   - exemplo: "clientes.EMAIL"
-
-3. Toda vez que um campo_tabela for usado:
-   - o app captura o próximo registro pendente daquela tabela
-   - o registro fica "reservado" na iteração atual
-   - ao final da iteração bem-sucedida, STATUS = OK
-   - registros com STATUS=OK não são reutilizados
-
-4. O app pode usar mais de uma tabela no mesmo roteiro.
-
-Exemplos:
-{
-  "info": "Usa nome da tabela padrão",
-  "teclado": {"campo_tabela": "NOME"}
-}
-
-{
-  "info": "Usa email da tabela clientes.csv",
-  "teclado": {"campo_tabela": "clientes.EMAIL"}
-}
-
-============================================================
-5.5) teclado.funcao_py
-------------------------------------------------------------
-
-Usa uma função do arquivo transformacoes.py.
-
-Formato:
-"teclado": {"funcao_py": "NOME_DA_FUNCAO"}
-
-Comportamento:
-- copia o texto selecionado
-- envia esse texto como input da função
-- recebe o retorno
-- cola o retorno no campo selecionado
-
-Exemplo:
-{
-  "info": "Transformar texto selecionado",
-  "teclado": {"funcao_py": "trocar_prefixo_tabela_rf"}
-}
-
-Requisitos:
-- pyperclip instalado
-- função existente em transformacoes.py
-- função registrada em TRANSFORMACOES
-
-============================================================
-6) PLACEHOLDERS
-============================================================
-
-Suportado:
-- {i}
-
-Exemplo:
-{
-  "info": "Digita índice",
-  "teclado": {"digitar": "Registro_{i}"}
-}
-
-============================================================
-7) EXEMPLO COMPLETO
-============================================================
-
-[
-  {
-    "info": "Mover até o campo",
-    "esperar": {"antes": 0.3, "depois": 0.2},
-    "mouse": {"x": 250, "y": 620, "acao": "mover"}
-  },
-  {
-    "info": "Clicar no campo",
-    "mouse": {"x": 250, "y": 620, "acao": "clicar_esquerdo"}
-  },
-  {
-    "info": "Digitar valor da tabela padrão",
-    "teclado": {"campo_tabela": "NOME"}
-  },
-  {
-    "info": "Pressionar TAB 2 vezes",
-    "repetir": 2,
-    "teclado": {"pressionar": "tab"}
-  },
-  {
-    "info": "Salvar",
-    "teclado": {"atalho": "ctrl+s"}
-  }
-]
-
-============================================================
-8) REGRAS DAS TABELAS CSV
-============================================================
-
-- Separador preferencial: ;
-- Deve possuir cabeçalho
-- Se STATUS não existir, o app cria
-- STATUS=OK significa registro já consumido
-- Registros com STATUS=OK não são reutilizados
-- O OK é gravado ao final da iteração executada com sucesso
-- Pode haver uso de múltiplas tabelas no mesmo roteiro
-
-============================================================
-9) CONSOLE
-============================================================
-
-- O console é limpo automaticamente antes de cada execução
-- A linha de iteração aparece em negrito:
-  --- Iteração X/Y ---
-- Cada item do JSON é logado em uma única linha
-- Ao final da iteração o tempo total aparece em vermelho
-
-============================================================
-10) SEGURANÇA
-============================================================
-
-- O FAILSAFE do pyautogui está ativo
-- Mova o mouse para o canto superior esquerdo para interromper por FAILSAFE
-"""
+]"""
+
+
+class ConsoleTag(str, Enum):
+    DEFAULT = "default"
+    INFO = "info"
+    SUCCESS = "success"
+    WARNING = "warning"
+    ERROR = "error"
+    STEP = "step"
+    ITERATION = "iteration"
+    ELAPSED = "elapsed"
+
+
+@dataclass
+class StepContext:
+    iteration_index: int
+    table_contexts: dict[str, "TableCursor"]
+    default_table: "TableCursor | None"
+    acquired_tables: set[str]
 
 
 @dataclass
@@ -518,16 +88,16 @@ class TableCursor:
 
     @classmethod
     def load(cls, table_name: str) -> "TableCursor":
-        path = TABELAS_DIR / f"{table_name}.csv"
+        path = Paths.TABELAS_DIR / f"{table_name}.csv"
         if not path.exists():
             raise FileNotFoundError(f"Tabela não encontrada: {path.name}")
 
-        with path.open("r", encoding="utf-8-sig", newline="") as f:
-            sample = f.read(2048)
-            f.seek(0)
+        with path.open("r", encoding="utf-8-sig", newline="") as file:
+            sample = file.read(2048)
+            file.seek(0)
             delimiter = ";" if sample.count(";") >= sample.count(",") else ","
-            reader = csv.DictReader(f, delimiter=delimiter)
-            rows = [dict(r) for r in reader]
+            reader = csv.DictReader(file, delimiter=delimiter)
+            rows = [dict(row) for row in reader]
             fieldnames = list(reader.fieldnames or [])
 
         if "STATUS" not in fieldnames:
@@ -539,13 +109,14 @@ class TableCursor:
                 row["STATUS"] = (row.get("STATUS") or "").strip()
 
         pending_indexes = [
-            idx for idx, row in enumerate(rows)
+            index
+            for index, row in enumerate(rows)
             if (row.get("STATUS") or "").strip().upper() != "OK"
         ]
         return cls(table_name, path, rows, fieldnames, pending_indexes)
 
     def has_pending(self) -> bool:
-        return len(self.pending_indexes) > 0
+        return bool(self.pending_indexes)
 
     def next_row(self) -> dict[str, str]:
         if not self.pending_indexes:
@@ -573,8 +144,8 @@ class TableCursor:
             self.current_index = None
 
     def save(self) -> None:
-        with self.path.open("w", encoding="utf-8", newline="") as f:
-            writer = csv.DictWriter(f, fieldnames=self.fieldnames, delimiter=";")
+        with self.path.open("w", encoding="utf-8", newline="") as file:
+            writer = csv.DictWriter(file, fieldnames=self.fieldnames, delimiter=";")
             writer.writeheader()
             writer.writerows(self.rows)
 
@@ -592,199 +163,178 @@ class ScriptRunner:
         self.get_delay = get_delay
         self.get_start_delay = get_start_delay
 
-    def run(
-        self,
-        steps: list[dict[str, Any]],
-        repetitions: int,
-        selected_table: str | None,
-    ) -> None:
+    def run(self, steps: list[dict[str, Any]], repetitions: int, selected_table: str | None) -> None:
         table_contexts: dict[str, TableCursor] = {}
-        default_table = None
+        default_table = self._load_default_table(selected_table, table_contexts)
+        self._load_explicit_tables(steps, table_contexts)
+        uses_table = bool(default_table or table_contexts)
 
-        if selected_table:
-            default_table = TableCursor.load(selected_table)
-            table_contexts[selected_table] = default_table
+        self._apply_initial_delay()
+
+        for iteration_index in range(repetitions):
+            if self.is_stop_requested():
+                self.log("Execução interrompida pelo usuário.", ConsoleTag.WARNING.value)
+                return
+
+            if uses_table and not self._has_rows_available(steps, table_contexts, default_table):
+                self.log("Sem registros pendentes suficientes para continuar. Execução finalizada.", ConsoleTag.WARNING.value)
+                return
+
+            self._run_iteration(steps, iteration_index, repetitions, table_contexts, default_table)
+
+        self.log("Execução concluída.", ConsoleTag.SUCCESS.value)
+
+    def _load_default_table(
+        self,
+        selected_table: str | None,
+        table_contexts: dict[str, TableCursor],
+    ) -> TableCursor | None:
+        if not selected_table:
+            return None
+        default_table = TableCursor.load(selected_table)
+        table_contexts[selected_table] = default_table
+        self.log(
+            f"Tabela selecionada: {selected_table} | pendentes: {len(default_table.pending_indexes)}",
+            ConsoleTag.INFO.value,
+        )
+        return default_table
+
+    def _load_explicit_tables(self, steps: list[dict[str, Any]], table_contexts: dict[str, TableCursor]) -> None:
+        for table_name in self._extract_explicit_table_names(steps):
+            if table_name in table_contexts:
+                continue
+            table_contexts[table_name] = TableCursor.load(table_name)
             self.log(
-                f"Tabela selecionada: {selected_table} | pendentes: {len(default_table.pending_indexes)}",
-                "info",
+                f"Tabela referenciada no roteiro: {table_name} | pendentes: {len(table_contexts[table_name].pending_indexes)}",
+                ConsoleTag.INFO.value,
             )
 
-        explicit_tables = self._extract_explicit_table_names(steps)
-        for name in explicit_tables:
-            if name not in table_contexts:
-                table_contexts[name] = TableCursor.load(name)
-                self.log(
-                    f"Tabela referenciada no roteiro: {name} | pendentes: {len(table_contexts[name].pending_indexes)}",
-                    "info",
-                )
-
-        uses_table = bool(default_table or explicit_tables)
-
+    def _apply_initial_delay(self) -> None:
         start_delay = self.get_start_delay()
         if start_delay > 0:
             self.log(
                 f"Delay inicial: aguardando {start_delay} segundo(s) antes de iniciar.",
-                "info",
+                ConsoleTag.INFO.value,
             )
             time.sleep(start_delay)
 
-        for i in range(repetitions):
-            if self.is_stop_requested():
-                self.log("Execução interrompida pelo usuário.", "warning")
-                return
-
-            if uses_table and not self._has_rows_available(steps, table_contexts, default_table):
-                self.log(
-                    "Sem registros pendentes suficientes para continuar. Execução finalizada.",
-                    "warning",
-                )
-                return
-
-            iteration_start = time.perf_counter()
-            self.log(f"--- Iteração {i + 1}/{repetitions} ---", "iteration")
-            acquired_tables: set[str] = set()
-
-            try:
-                for step_idx, step in enumerate(steps, start=1):
-                    if self.is_stop_requested():
-                        self.log("Execução interrompida pelo usuário.", "warning")
-                        return
-
-                    self._execute_step(
-                        step=step,
-                        step_idx=step_idx,
-                        i=i,
-                        table_contexts=table_contexts,
-                        default_table=default_table,
-                        acquired_tables=acquired_tables,
-                    )
-
-                    delay = self.get_delay()
-                    if delay > 0 and step_idx < len(steps):
-                        time.sleep(delay)
-
-                for table_name in acquired_tables:
-                    table_contexts[table_name].mark_current_ok()
-                    table_contexts[table_name].save()
-                    table_contexts[table_name].current_index = None
-                    self.log(f"Tabela {table_name}: registro marcado com STATUS=OK", "success")
-
-            except Exception as exc:
-                for table_name in acquired_tables:
-                    table_contexts[table_name].reset_current()
-                raise RuntimeError(f"Erro na iteração {i + 1}: {exc}") from exc
-            finally:
-                elapsed = time.perf_counter() - iteration_start
-                self.log(f"Tempo total da iteração: {elapsed:.2f}s", "elapsed")
-
-        self.log("Execução concluída.", "success")
-
-    def _execute_step(
+    def _run_iteration(
         self,
-        step: dict[str, Any],
-        step_idx: int,
-        i: int,
+        steps: list[dict[str, Any]],
+        iteration_index: int,
+        repetitions: int,
         table_contexts: dict[str, TableCursor],
         default_table: TableCursor | None,
-        acquired_tables: set[str],
     ) -> None:
-        info = str(step.get("info") or step.get("obs") or f"Item {step_idx}")
-        before_wait, after_wait = self._parse_wait(step.get("esperar"))
-        repeat_count = max(self._parse_repeat(step.get("repetir"), i), 1)
-        action_kind, action_value = self._get_action_payload(step)
+        iteration_start = time.perf_counter()
+        acquired_tables: set[str] = set()
+        context = StepContext(iteration_index, table_contexts, default_table, acquired_tables)
 
-        summary = self._build_step_summary(
-            info=info,
-            action_kind=action_kind,
-            action_value=action_value,
-            before_wait=before_wait,
-            after_wait=after_wait,
-            repeat_count=repeat_count,
-        )
-        self.log(summary, "step")
+        self.log(f"--- Iteração {iteration_index + 1}/{repetitions} ---", ConsoleTag.ITERATION.value)
+        try:
+            for step_index, step in enumerate(steps, start=1):
+                if self.is_stop_requested():
+                    self.log("Execução interrompida pelo usuário.", ConsoleTag.WARNING.value)
+                    return
+
+                self._execute_step(step, step_index, context)
+                delay = self.get_delay()
+                if delay > 0 and step_index < len(steps):
+                    time.sleep(delay)
+
+            self._commit_tables(acquired_tables, table_contexts)
+        except Exception as exc:
+            self._rollback_tables(acquired_tables, table_contexts)
+            raise RuntimeError(f"Erro na iteração {iteration_index + 1}: {exc}") from exc
+        finally:
+            elapsed = time.perf_counter() - iteration_start
+            self.log(f"Tempo total da iteração: {elapsed:.2f}s", ConsoleTag.ELAPSED.value)
+
+    def _commit_tables(self, acquired_tables: set[str], table_contexts: dict[str, TableCursor]) -> None:
+        for table_name in acquired_tables:
+            cursor = table_contexts[table_name]
+            cursor.mark_current_ok()
+            cursor.save()
+            cursor.current_index = None
+            self.log(f"Tabela {table_name}: registro marcado com STATUS=OK", ConsoleTag.SUCCESS.value)
+
+    def _rollback_tables(self, acquired_tables: set[str], table_contexts: dict[str, TableCursor]) -> None:
+        for table_name in acquired_tables:
+            table_contexts[table_name].reset_current()
+
+    def _execute_step(self, step: dict[str, Any], step_index: int, context: StepContext) -> None:
+        info = str(step.get("info") or step.get("obs") or f"Item {step_index}")
+        before_wait, after_wait = self._parse_wait(step.get("esperar"))
+        repeat_count = max(self._parse_repeat(step.get("repetir"), context.iteration_index), 1)
+        action_kind, action_payload = self._get_action_payload(step)
+
+        summary = self._build_step_summary(info, action_kind, action_payload, before_wait, after_wait, repeat_count)
+        self.log(summary, ConsoleTag.STEP.value)
 
         for _ in range(repeat_count):
             if before_wait > 0:
                 time.sleep(before_wait)
 
             if action_kind == "mouse":
-                self._execute_mouse(
-                    payload=action_value,
-                    i=i,
-                    table_contexts=table_contexts,
-                    default_table=default_table,
-                    acquired_tables=acquired_tables,
-                )
+                self._execute_mouse(action_payload, context)
             elif action_kind == "teclado":
-                self._execute_keyboard(
-                    payload=action_value,
-                    i=i,
-                    table_contexts=table_contexts,
-                    default_table=default_table,
-                    acquired_tables=acquired_tables,
-                )
+                self._execute_keyboard(action_payload, context)
 
             if after_wait > 0:
                 time.sleep(after_wait)
 
-    def _get_action_payload(self, step: dict[str, Any]) -> tuple[str | None, Any | None]:
+    def _get_action_payload(self, step: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None]:
         has_mouse = isinstance(step.get("mouse"), dict) and bool(step.get("mouse"))
         has_keyboard = isinstance(step.get("teclado"), dict) and bool(step.get("teclado"))
 
         if has_mouse and has_keyboard:
             raise ValueError("Cada item pode ter somente 1 ação principal: mouse OU teclado.")
         if has_mouse:
-            return "mouse", step.get("mouse")
+            return "mouse", step["mouse"]
         if has_keyboard:
-            return "teclado", step.get("teclado")
+            return "teclado", step["teclado"]
         return None, None
 
     def _build_step_summary(
         self,
         info: str,
         action_kind: str | None,
-        action_value: Any | None,
+        action_payload: dict[str, Any] | None,
         before_wait: float,
         after_wait: float,
         repeat_count: int,
     ) -> str:
-        parts = [f"INFO={info}"]
-
+        parts = [f"> {info}"]
         if before_wait > 0:
             parts.append(f"ANTES={before_wait}s")
-
-        if action_kind == "mouse" and isinstance(action_value, dict):
-            x = action_value.get("x")
-            y = action_value.get("y")
-            acao = action_value.get("acao")
-            parts.append(f"MOUSE=x:{x}, y:{y}, acao:{acao}")
-
-        elif action_kind == "teclado" and isinstance(action_value, dict):
-            key, value = next(iter(action_value.items()))
+        if action_kind == "mouse" and action_payload:
+            parts.append(
+                f"MOUSE=x:{action_payload.get('x')}, y:{action_payload.get('y')}, acao:{action_payload.get('acao')}"
+            )
+        elif action_kind == "teclado" and action_payload:
+            key, value = next(iter(action_payload.items()))
             parts.append(f"TECLADO={key}:{value}")
-
         if repeat_count > 1:
             parts.append(f"REPETIR={repeat_count}")
-
         if after_wait > 0:
             parts.append(f"DEPOIS={after_wait}s")
-
         return " | ".join(parts)
 
     def _extract_explicit_table_names(self, steps: list[dict[str, Any]]) -> set[str]:
-        names: set[str] = set()
+        table_names: set[str] = set()
         for step in steps:
-            teclado = step.get("teclado")
-            if not isinstance(teclado, dict):
+            keyboard = step.get("teclado")
+            if not isinstance(keyboard, dict):
                 continue
-            campo_tabela = teclado.get("campo_tabela")
-            if not campo_tabela:
+            reference = keyboard.get("campo_tabela")
+            if not reference:
                 continue
-            raw = str(campo_tabela).strip()
-            if "." in raw:
-                table_name, _field = raw.split(".", 1)
-                names.add(table_name.strip())
-        return names
+            raw = str(reference).strip()
+            if "." not in raw:
+                continue
+            table_name, _field = raw.split(".", 1)
+            table_names.add(table_name.strip())
+        return table_names
 
     def _has_rows_available(
         self,
@@ -792,79 +342,55 @@ class ScriptRunner:
         table_contexts: dict[str, TableCursor],
         default_table: TableCursor | None,
     ) -> bool:
-        needed_tables = self._tables_needed_for_iteration(steps, default_table)
-        for table_name in needed_tables:
-            cursor = table_contexts[table_name]
-            if not cursor.has_pending():
+        for table_name in self._tables_needed_for_iteration(steps, default_table):
+            if not table_contexts[table_name].has_pending():
                 return False
         return True
 
-    def _tables_needed_for_iteration(
-        self,
-        steps: list[dict[str, Any]],
-        default_table: TableCursor | None,
-    ) -> set[str]:
-        names: set[str] = set()
-
+    def _tables_needed_for_iteration(self, steps: list[dict[str, Any]], default_table: TableCursor | None) -> set[str]:
+        table_names: set[str] = set()
         for step in steps:
-            teclado = step.get("teclado")
-            if not isinstance(teclado, dict):
+            keyboard = step.get("teclado")
+            if not isinstance(keyboard, dict):
                 continue
-
-            campo_tabela = teclado.get("campo_tabela")
-            if not campo_tabela:
+            reference = keyboard.get("campo_tabela")
+            if not reference:
                 continue
-
-            raw = str(campo_tabela).strip()
+            raw = str(reference).strip()
             if "." in raw:
                 table_name, _field = raw.split(".", 1)
-                names.add(table_name.strip())
-            elif default_table:
-                names.add(default_table.name)
-
-        return names
+                table_names.add(table_name.strip())
+            elif default_table is not None:
+                table_names.add(default_table.name)
+        return table_names
 
     def _parse_wait(self, wait_value: Any) -> tuple[float, float]:
         before = 0.0
         after = 0.0
-
         if wait_value in (None, ""):
             return before, after
+        if not isinstance(wait_value, dict):
+            raise ValueError('Campo "esperar" inválido. Use {"antes": n, "depois": n}.')
+        if "antes" in wait_value:
+            before = float(wait_value["antes"])
+        if "depois" in wait_value:
+            after = float(wait_value["depois"])
+        return before, after
 
-        if isinstance(wait_value, dict):
-            if "antes" in wait_value:
-                before = float(wait_value["antes"])
-            if "depois" in wait_value:
-                after = float(wait_value["depois"])
-            return before, after
-
-        raise ValueError('Campo "esperar" inválido. Use {"antes": n, "depois": n}.')
-
-    def _parse_repeat(self, repeat_value: Any, i: int) -> int:
+    def _parse_repeat(self, repeat_value: Any, iteration_index: int) -> int:
         if repeat_value in (None, ""):
             return 1
         if isinstance(repeat_value, int):
             return repeat_value
-        return int(self._safe_eval(str(repeat_value).strip(), i))
+        return int(self._safe_eval(str(repeat_value).strip(), iteration_index))
 
-    def _execute_mouse(
-        self,
-        payload: dict[str, Any],
-        i: int,
-        table_contexts: dict[str, TableCursor],
-        default_table: TableCursor | None,
-        acquired_tables: set[str],
-    ) -> None:
-        x_raw = payload.get("x")
-        y_raw = payload.get("y")
+    def _execute_mouse(self, payload: dict[str, Any], context: StepContext) -> None:
         action = str(payload.get("acao", "")).strip().lower()
+        if not action:
+            raise ValueError("mouse.acao é obrigatório.")
 
-        if action == "":
-            raise ValueError('mouse.acao é obrigatório.')
-
-        x = self._parse_xy_value(x_raw, i, table_contexts, default_table, acquired_tables)
-        y = self._parse_xy_value(y_raw, i, table_contexts, default_table, acquired_tables)
-
+        x = self._parse_xy_value(payload.get("x"), context)
+        y = self._parse_xy_value(payload.get("y"), context)
         self._require_xy(x, y, action)
 
         if action == "mover":
@@ -882,65 +408,47 @@ class ScriptRunner:
         else:
             raise ValueError(f"Ação de mouse inválida: {action}")
 
-    def _execute_keyboard(
-        self,
-        payload: dict[str, Any],
-        i: int,
-        table_contexts: dict[str, TableCursor],
-        default_table: TableCursor | None,
-        acquired_tables: set[str],
-    ) -> None:
+    def _execute_keyboard(self, payload: dict[str, Any], context: StepContext) -> None:
         if len(payload) != 1:
             raise ValueError("O objeto teclado deve conter somente 1 subitem por passo.")
 
-        key, value = next(iter(payload.items()))
-        key = str(key).strip()
+        action, value = next(iter(payload.items()))
+        action = str(action).strip()
 
-        if key == "digitar":
-            text = self._replace_placeholders(str(value), i, table_contexts, default_table, acquired_tables)
+        if action == "digitar":
+            text = self._replace_placeholders(str(value), context)
             self._write_text(text)
-
-        elif key == "atalho":
+        elif action == "atalho":
             hotkeys = [part.strip().lower() for part in str(value).split("+") if part.strip()]
             if not hotkeys:
                 raise ValueError("Atalho inválido.")
             pyautogui.hotkey(*hotkeys)
-
-        elif key == "pressionar":
+        elif action == "pressionar":
             pyautogui.press(str(value).strip().lower())
-
-        elif key == "campo_tabela":
-            text = self._resolve_field_reference(
-                reference=str(value).strip(),
-                table_contexts=table_contexts,
-                default_table=default_table,
-                acquired_tables=acquired_tables,
-            )
+        elif action == "campo_tabela":
+            text = self._resolve_field_reference(str(value).strip(), context)
             self._write_text(text)
-
-        elif key == "funcao_py":
+        elif action == "funcao_py":
             self._execute_transform_function(str(value).strip())
-
         else:
             raise ValueError(
-                f"Subitem de teclado inválido: {key}. "
-                "Use digitar, atalho, pressionar, campo_tabela ou funcao_py."
+                f"Subitem de teclado inválido: {action}. Use digitar, atalho, pressionar, campo_tabela ou funcao_py."
             )
 
     def _execute_transform_function(self, function_name: str) -> None:
         if pyperclip is None:
             raise RuntimeError("pyperclip não está instalado. Instale para usar funcao_py.")
-
-        func = TRANSFORMACOES.get(function_name)
-        if func is None:
+        function = TRANSFORMACOES.get(function_name)
+        if function is None:
             raise KeyError(f"Função não encontrada em TRANSFORMACOES: {function_name}")
 
         pyautogui.hotkey("ctrl", "c")
         time.sleep(0.15)
-        original = pyperclip.paste()
-        transformed = func(original)
-        pyperclip.copy(str(transformed))
+        original_text = pyperclip.paste()
+        transformed_text = function(original_text)
+        pyperclip.copy(str(transformed_text))
         pyautogui.hotkey("ctrl", "v")
+        self.log(f"funcao_py aplicada: {function_name}", ConsoleTag.INFO.value)
 
     def _write_text(self, text: str) -> None:
         if pyperclip is not None:
@@ -949,69 +457,42 @@ class ScriptRunner:
         else:
             pyautogui.write(text, interval=0)
 
-    def _parse_xy_value(
-        self,
-        value: Any,
-        i: int,
-        table_contexts: dict[str, TableCursor],
-        default_table: TableCursor | None,
-        acquired_tables: set[str],
-    ) -> int:
+    def _parse_xy_value(self, value: Any, context: StepContext) -> int:
         if value is None:
             raise ValueError("x e y são obrigatórios para ações de mouse.")
-
         if isinstance(value, (int, float)):
             return int(value)
-
-        text = self._replace_placeholders(str(value), i, table_contexts, default_table, acquired_tables)
+        text = self._replace_placeholders(str(value), context)
         return int(float(text))
 
-    def _resolve_field_reference(
-        self,
-        reference: str,
-        table_contexts: dict[str, TableCursor],
-        default_table: TableCursor | None,
-        acquired_tables: set[str],
-    ) -> str:
-        raw = reference.strip()
-
-        if "." in raw:
-            table_name, field = raw.split(".", 1)
+    def _resolve_field_reference(self, reference: str, context: StepContext) -> str:
+        raw_reference = reference.strip()
+        if "." in raw_reference:
+            table_name, field_name = raw_reference.split(".", 1)
             table_name = table_name.strip()
-            field = field.strip()
-            if table_name not in table_contexts:
-                table_contexts[table_name] = TableCursor.load(table_name)
-            cursor = table_contexts[table_name]
+            field_name = field_name.strip()
+            if table_name not in context.table_contexts:
+                context.table_contexts[table_name] = TableCursor.load(table_name)
+            cursor = context.table_contexts[table_name]
         else:
-            if default_table is None:
-                raise RuntimeError(
-                    "campo_tabela sem nome de tabela exige uma tabela selecionada no dropdown."
-                )
-            field = raw
-            cursor = default_table
+            if context.default_table is None:
+                raise RuntimeError("campo_tabela sem nome de tabela exige uma tabela selecionada no dropdown.")
+            cursor = context.default_table
+            field_name = raw_reference
 
         if cursor.current_index is None:
             cursor.next_row()
-            acquired_tables.add(cursor.name)
-            self.log(f"Tabela {cursor.name}: usando novo registro pendente.", "info")
+            context.acquired_tables.add(cursor.name)
+            self.log(f"Tabela {cursor.name}: usando novo registro pendente.", ConsoleTag.INFO.value)
 
-        return cursor.get_current_value(field)
+        return cursor.get_current_value(field_name)
 
-    def _replace_placeholders(
-        self,
-        text: str,
-        i: int,
-        table_contexts: dict[str, TableCursor],
-        default_table: TableCursor | None,
-        acquired_tables: set[str],
-    ) -> str:
-        text = text.replace("{i}", str(i))
-        return text
+    def _replace_placeholders(self, text: str, context: StepContext) -> str:
+        return text.replace("{i}", str(context.iteration_index))
 
     @staticmethod
-    def _safe_eval(expr: str, i: int) -> int:
-        allowed = {"i": i}
-        return int(eval(expr, {"__builtins__": {}}, allowed))
+    def _safe_eval(expression: str, iteration_index: int) -> int:
+        return int(eval(expression, {"__builtins__": {}}, {"i": iteration_index}))
 
     @staticmethod
     def _require_xy(x: Any, y: Any, action: str) -> None:
@@ -1019,46 +500,61 @@ class ScriptRunner:
             raise ValueError(f'Ação "{action}" exige x e y no passo do roteiro.')
 
 
-class TableEditorWindow(tk.Toplevel):
-    def __init__(self, master: "AutomationApp") -> None:
+class BaseEditorWindow(tk.Toplevel):
+    def __init__(self, master: "AutomationApp", title: str, geometry: str) -> None:
         super().__init__(master)
         self.app = master
-        self.title("CRUD de Tabelas (CSV)")
-        self.geometry("900x560")
+        self.title(title)
+        self.geometry(geometry)
+
+    @staticmethod
+    def read_file(path: Path) -> str:
+        return path.read_text(encoding="utf-8")
+
+    @staticmethod
+    def write_file(path: Path, content: str) -> None:
+        path.write_text(content, encoding="utf-8")
+
+
+class TableEditorWindow(BaseEditorWindow):
+    def __init__(self, master: "AutomationApp") -> None:
+        super().__init__(master, title="CRUD de Tabelas (CSV)", geometry="900x560")
+        self.name_var = tk.StringVar()
+        self.listbox: tk.Listbox
+        self.editor: tk.Text
         self._build()
         self.refresh_list()
 
     def _build(self) -> None:
-        left = ttk.Frame(self)
-        left.pack(side="left", fill="y", padx=8, pady=8)
-        right = ttk.Frame(self)
-        right.pack(side="right", fill="both", expand=True, padx=8, pady=8)
+        left_frame = ttk.Frame(self)
+        left_frame.pack(side="left", fill="y", padx=8, pady=8)
+        right_frame = ttk.Frame(self)
+        right_frame.pack(side="right", fill="both", expand=True, padx=8, pady=8)
 
-        self.listbox = tk.Listbox(left, width=30)
+        self.listbox = tk.Listbox(left_frame, width=30)
         self.listbox.pack(fill="y", expand=True)
-        self.listbox.bind("<<ListboxSelect>>", lambda _e: self.load_selected())
+        self.listbox.bind("<<ListboxSelect>>", lambda _event: self.load_selected())
 
-        btns = ttk.Frame(left)
-        btns.pack(fill="x", pady=(8, 0))
-        ttk.Button(btns, text="Novo", command=self.new_file).pack(fill="x", pady=2)
-        ttk.Button(btns, text="Importar CSV", command=self.import_csv).pack(fill="x", pady=2)
-        ttk.Button(btns, text="Salvar", command=self.save_file).pack(fill="x", pady=2)
-        ttk.Button(btns, text="Excluir", command=self.delete_file).pack(fill="x", pady=2)
-        ttk.Button(btns, text="Atualizar lista", command=self.refresh_list).pack(fill="x", pady=2)
+        buttons = ttk.Frame(left_frame)
+        buttons.pack(fill="x", pady=(8, 0))
+        ttk.Button(buttons, text="Novo", command=self.new_file).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Importar CSV", command=self.import_csv).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Salvar", command=self.save_file).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Excluir", command=self.delete_file).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Atualizar lista", command=self.refresh_list).pack(fill="x", pady=2)
 
-        top = ttk.Frame(right)
+        top = ttk.Frame(right_frame)
         top.pack(fill="x")
         ttk.Label(top, text="Nome do arquivo (sem .csv):").pack(side="left")
-        self.name_var = tk.StringVar()
         ttk.Entry(top, textvariable=self.name_var, width=40).pack(side="left", padx=8)
 
-        self.editor = tk.Text(right, wrap="none", undo=True)
+        self.editor = tk.Text(right_frame, wrap="none", undo=True)
         self.editor.pack(fill="both", expand=True, pady=(8, 0))
         self.editor.insert("1.0", "ID;NOME;STATUS\n1;Exemplo;\n")
 
     def refresh_list(self) -> None:
         self.listbox.delete(0, tk.END)
-        for path in sorted(TABELAS_DIR.glob("*.csv")):
+        for path in sorted(Paths.TABELAS_DIR.glob("*.csv")):
             self.listbox.insert(tk.END, path.stem)
 
     def load_selected(self) -> None:
@@ -1066,10 +562,10 @@ class TableEditorWindow(tk.Toplevel):
         if not selection:
             return
         name = self.listbox.get(selection[0])
-        path = TABELAS_DIR / f"{name}.csv"
+        path = Paths.TABELAS_DIR / f"{name}.csv"
         self.name_var.set(name)
         self.editor.delete("1.0", tk.END)
-        self.editor.insert("1.0", path.read_text(encoding="utf-8"))
+        self.editor.insert("1.0", self.read_file(path))
 
     def new_file(self) -> None:
         self.name_var.set("nova_tabela")
@@ -1077,22 +573,22 @@ class TableEditorWindow(tk.Toplevel):
         self.editor.insert("1.0", "ID;NOME;STATUS\n")
 
     def import_csv(self) -> None:
-        file = filedialog.askopenfilename(filetypes=[("CSV", "*.csv"), ("Todos", "*.*")])
-        if not file:
+        file_path = filedialog.askopenfilename(filetypes=[("CSV", "*.csv"), ("Todos", "*.*")])
+        if not file_path:
             return
-        path = Path(file)
-        self.name_var.set(path.stem)
+        source = Path(file_path)
+        self.name_var.set(source.stem)
         self.editor.delete("1.0", tk.END)
-        self.editor.insert("1.0", path.read_text(encoding="utf-8-sig"))
+        self.editor.insert("1.0", source.read_text(encoding="utf-8-sig"))
 
     def save_file(self) -> None:
         name = self.name_var.get().strip()
         if not name:
             messagebox.showerror("Erro", "Informe o nome do arquivo.")
             return
-        path = TABELAS_DIR / f"{name}.csv"
+        path = Paths.TABELAS_DIR / f"{name}.csv"
         content = self.editor.get("1.0", tk.END).strip() + "\n"
-        path.write_text(content, encoding="utf-8")
+        self.write_file(path, content)
         self.app.refresh_table_dropdown()
         self.refresh_list()
         messagebox.showinfo("OK", f"Tabela salva: {path.name}")
@@ -1101,7 +597,7 @@ class TableEditorWindow(tk.Toplevel):
         name = self.name_var.get().strip()
         if not name:
             return
-        path = TABELAS_DIR / f"{name}.csv"
+        path = Paths.TABELAS_DIR / f"{name}.csv"
         if path.exists() and messagebox.askyesno("Confirmar", f"Excluir {path.name}?"):
             path.unlink()
             self.app.refresh_table_dropdown()
@@ -1109,67 +605,45 @@ class TableEditorWindow(tk.Toplevel):
             self.new_file()
 
 
-class ScriptEditorWindow(tk.Toplevel):
+class ScriptEditorWindow(BaseEditorWindow):
     def __init__(self, master: "AutomationApp") -> None:
-        super().__init__(master)
-        self.app = master
-        self.title("CRUD de Roteiros (JSON)")
-        self.geometry("980x620")
+        super().__init__(master, title="CRUD de Roteiros (JSON)", geometry="980x620")
+        self.name_var = tk.StringVar()
+        self.listbox: tk.Listbox
+        self.editor: tk.Text
         self._build()
         self.refresh_list()
 
     def _build(self) -> None:
-        left = ttk.Frame(self)
-        left.pack(side="left", fill="y", padx=8, pady=8)
-        right = ttk.Frame(self)
-        right.pack(side="right", fill="both", expand=True, padx=8, pady=8)
+        left_frame = ttk.Frame(self)
+        left_frame.pack(side="left", fill="y", padx=8, pady=8)
+        right_frame = ttk.Frame(self)
+        right_frame.pack(side="right", fill="both", expand=True, padx=8, pady=8)
 
-        self.listbox = tk.Listbox(left, width=30)
+        self.listbox = tk.Listbox(left_frame, width=30)
         self.listbox.pack(fill="y", expand=True)
-        self.listbox.bind("<<ListboxSelect>>", lambda _e: self.load_selected())
+        self.listbox.bind("<<ListboxSelect>>", lambda _event: self.load_selected())
 
-        btns = ttk.Frame(left)
-        btns.pack(fill="x", pady=(8, 0))
-        ttk.Button(btns, text="Novo", command=self.new_file).pack(fill="x", pady=2)
-        ttk.Button(btns, text="Salvar", command=self.save_file).pack(fill="x", pady=2)
-        ttk.Button(btns, text="Excluir", command=self.delete_file).pack(fill="x", pady=2)
-        ttk.Button(btns, text="Carregar na tela principal", command=self.load_into_main).pack(fill="x", pady=2)
-        ttk.Button(btns, text="Atualizar lista", command=self.refresh_list).pack(fill="x", pady=2)
+        buttons = ttk.Frame(left_frame)
+        buttons.pack(fill="x", pady=(8, 0))
+        ttk.Button(buttons, text="Novo", command=self.new_file).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Salvar", command=self.save_file).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Excluir", command=self.delete_file).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Carregar na tela principal", command=self.load_into_main).pack(fill="x", pady=2)
+        ttk.Button(buttons, text="Atualizar lista", command=self.refresh_list).pack(fill="x", pady=2)
 
-        top = ttk.Frame(right)
+        top = ttk.Frame(right_frame)
         top.pack(fill="x")
         ttk.Label(top, text="Nome do arquivo (sem .json):").pack(side="left")
-        self.name_var = tk.StringVar()
         ttk.Entry(top, textvariable=self.name_var, width=40).pack(side="left", padx=8)
 
-        self.editor = tk.Text(right, wrap="none", undo=True)
+        self.editor = tk.Text(right_frame, wrap="none", undo=True)
         self.editor.pack(fill="both", expand=True, pady=(8, 0))
         self.new_file()
 
-    def _default_script(self) -> str:
-        sample = [
-            {
-                "info": "Mover mouse",
-                "mouse": {"x": 250, "y": 620, "acao": "mover"},
-            },
-            {
-                "info": "Clique esquerdo",
-                "mouse": {"x": 250, "y": 620, "acao": "clicar_esquerdo"},
-            },
-            {
-                "info": "Digitar da tabela padrão",
-                "teclado": {"campo_tabela": "NOME"},
-            },
-            {
-                "info": "Pressionar ENTER",
-                "teclado": {"pressionar": "enter"},
-            },
-        ]
-        return json.dumps(sample, ensure_ascii=False)
-
     def refresh_list(self) -> None:
         self.listbox.delete(0, tk.END)
-        for path in sorted(ROTEIROS_DIR.glob("*.json")):
+        for path in sorted(Paths.ROTEIROS_DIR.glob("*.json")):
             self.listbox.insert(tk.END, path.stem)
         self.app.refresh_script_dropdown()
 
@@ -1178,15 +652,15 @@ class ScriptEditorWindow(tk.Toplevel):
         if not selection:
             return
         name = self.listbox.get(selection[0])
-        path = ROTEIROS_DIR / f"{name}.json"
+        path = Paths.ROTEIROS_DIR / f"{name}.json"
         self.name_var.set(name)
         self.editor.delete("1.0", tk.END)
-        self.editor.insert("1.0", path.read_text(encoding="utf-8"))
+        self.editor.insert("1.0", self.read_file(path))
 
     def new_file(self) -> None:
         self.name_var.set("novo_roteiro")
         self.editor.delete("1.0", tk.END)
-        self.editor.insert("1.0", self._default_script())
+        self.editor.insert("1.0", DEFAULT_SCRIPT)
 
     def save_file(self) -> None:
         name = self.name_var.get().strip()
@@ -1203,8 +677,8 @@ class ScriptEditorWindow(tk.Toplevel):
             messagebox.showerror("Erro de JSON", str(exc))
             return
 
-        path = ROTEIROS_DIR / f"{name}.json"
-        path.write_text(content, encoding="utf-8")
+        path = Paths.ROTEIROS_DIR / f"{name}.json"
+        self.write_file(path, content)
         self.app.refresh_script_dropdown()
         self.refresh_list()
         messagebox.showinfo("OK", f"Roteiro salvo: {path.name}")
@@ -1213,7 +687,7 @@ class ScriptEditorWindow(tk.Toplevel):
         name = self.name_var.get().strip()
         if not name:
             return
-        path = ROTEIROS_DIR / f"{name}.json"
+        path = Paths.ROTEIROS_DIR / f"{name}.json"
         if path.exists() and messagebox.askyesno("Confirmar", f"Excluir {path.name}?"):
             path.unlink()
             self.app.refresh_script_dropdown()
@@ -1221,10 +695,8 @@ class ScriptEditorWindow(tk.Toplevel):
             self.new_file()
 
     def load_into_main(self) -> None:
-        self.app.script_text.delete("1.0", tk.END)
-        self.app.script_text.insert("1.0", self.editor.get("1.0", tk.END))
         self.app.script_name_var.set(self.name_var.get().strip())
-        self.app.apply_json_highlight()
+        self.app.set_script_text(self.editor.get("1.0", tk.END))
         messagebox.showinfo("OK", "Roteiro carregado na tela principal.")
 
 
@@ -1232,7 +704,7 @@ class AutomationApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Automação de Teclado e Mouse")
-        self.geometry("1220x780")
+        self.geometry("1240x800")
 
         self.script_name_var = tk.StringVar()
         self.selected_script_var = tk.StringVar()
@@ -1246,9 +718,17 @@ class AutomationApp(tk.Tk):
         self.stop_event = threading.Event()
         self.worker_thread: threading.Thread | None = None
 
+        self.script_text: tk.Text
+        self.line_numbers: tk.Text
+        self.script_scrollbar: ttk.Scrollbar
+        self.console_text: tk.Text
+        self.script_combo: ttk.Combobox
+        self.table_combo: ttk.Combobox
+
         self._build_ui()
         self.refresh_script_dropdown()
         self.refresh_table_dropdown()
+        self.set_script_text(DEFAULT_SCRIPT)
         self.after(150, self.process_log_queue)
         self.after(100, self.update_mouse_position)
 
@@ -1281,12 +761,10 @@ class AutomationApp(tk.Tk):
         ttk.Label(top, text="Repetições:").grid(row=1, column=8, sticky="e", padx=4, pady=4)
         ttk.Entry(top, textvariable=self.repetitions_var, width=10).grid(row=1, column=9, sticky="w", padx=4, pady=4)
 
-        ttk.Label(top, textvariable=self.mouse_position_var).grid(
-            row=2, column=0, columnspan=10, sticky="w", padx=4, pady=(2, 4)
-        )
+        ttk.Label(top, textvariable=self.mouse_position_var).grid(row=2, column=0, columnspan=10, sticky="w", padx=4, pady=(2, 4))
 
-        for c in range(10):
-            top.columnconfigure(c, weight=1)
+        for column in range(10):
+            top.columnconfigure(column, weight=1)
 
         center = ttk.Panedwindow(self, orient="vertical")
         center.pack(fill="both", expand=True, padx=10, pady=(0, 10))
@@ -1296,44 +774,7 @@ class AutomationApp(tk.Tk):
         center.add(script_frame, weight=3)
         center.add(console_frame, weight=2)
 
-        self.script_text = tk.Text(
-            script_frame,
-            wrap="none",
-            undo=True,
-            height=20,
-            bg="#0f172a",
-            fg="#e2e8f0",
-            insertbackground="#f8fafc",
-            selectbackground="#334155",
-            padx=10,
-            pady=10,
-            font=("Consolas", 10),
-        )
-        self.script_text.pack(fill="both", expand=True, padx=6, pady=6)
-        self._configure_script_tags()
-        self.script_text.insert(
-            "1.0",
-            json.dumps(
-                [
-                    {
-                        "info": "Exemplo mouse",
-                        "mouse": {"x": 250, "y": 620, "acao": "clicar_esquerdo"},
-                    },
-                    {
-                        "info": "Exemplo com tabela selecionada",
-                        "teclado": {"campo_tabela": "NOME"},
-                    },
-                    {
-                        "info": "Exemplo pressionar ENTER",
-                        "teclado": {"pressionar": "enter"},
-                    },
-                ],
-                ensure_ascii=False,
-            ),
-        )
-        self.apply_json_highlight()
-        self.script_text.bind("<KeyRelease>", lambda _e: self.apply_json_highlight())
-        self.script_text.bind("<<Paste>>", lambda _e: self.after(10, self.apply_json_highlight))
+        self._build_script_editor(script_frame)
 
         controls = ttk.Frame(self, padding=(10, 0, 10, 10))
         controls.pack(fill="x")
@@ -1356,6 +797,51 @@ class AutomationApp(tk.Tk):
         self.console_text.pack(fill="both", expand=True, padx=6, pady=6)
         self._configure_console_tags()
 
+    def _build_script_editor(self, script_frame: ttk.Labelframe) -> None:
+        script_container = ttk.Frame(script_frame)
+        script_container.pack(fill="both", expand=True, padx=6, pady=6)
+
+        self.line_numbers = tk.Text(
+            script_container,
+            width=5,
+            padx=4,
+            takefocus=0,
+            border=0,
+            background="#111827",
+            foreground="#94a3b8",
+            state="disabled",
+            wrap="none",
+            font=("Consolas", 10),
+        )
+        self.line_numbers.pack(side="left", fill="y")
+
+        self.script_scrollbar = ttk.Scrollbar(script_container)
+        self.script_scrollbar.pack(side="right", fill="y")
+
+        self.script_text = tk.Text(
+            script_container,
+            wrap="none",
+            undo=True,
+            height=20,
+            bg="#0f172a",
+            fg="#e2e8f0",
+            insertbackground="#f8fafc",
+            selectbackground="#334155",
+            padx=10,
+            pady=10,
+            font=("Consolas", 10),
+            yscrollcommand=self._on_script_scroll,
+        )
+        self.script_text.pack(side="left", fill="both", expand=True)
+        self.script_scrollbar.config(command=self._sync_scroll)
+
+        self._configure_script_tags()
+        self.script_text.bind("<KeyRelease>", self._handle_script_change)
+        self.script_text.bind("<<Paste>>", lambda _event: self.after(10, self._refresh_script_view))
+        self.script_text.bind("<MouseWheel>", lambda _event: self.after(10, self._update_line_numbers))
+        self.script_text.bind("<Button-4>", lambda _event: self.after(10, self._update_line_numbers))
+        self.script_text.bind("<Button-5>", lambda _event: self.after(10, self._update_line_numbers))
+
     def _configure_script_tags(self) -> None:
         self.script_text.tag_configure("json_key", foreground="#93c5fd")
         self.script_text.tag_configure("json_string", foreground="#86efac")
@@ -1364,68 +850,103 @@ class AutomationApp(tk.Tk):
         self.script_text.tag_configure("json_brace", foreground="#cbd5e1")
 
     def _configure_console_tags(self) -> None:
-        self.console_text.tag_configure("default", foreground="#e5e7eb")
-        self.console_text.tag_configure("info", foreground="#93c5fd")
-        self.console_text.tag_configure("success", foreground="#86efac")
-        self.console_text.tag_configure("warning", foreground="#fde68a")
-        self.console_text.tag_configure("error", foreground="#fca5a5")
-        self.console_text.tag_configure("step", foreground="#e5e7eb")
-        self.console_text.tag_configure("iteration", foreground="#ffffff", font=("Consolas", 10, "bold"))
-        self.console_text.tag_configure("elapsed", foreground="#ff6b6b")
+        self.console_text.tag_configure(ConsoleTag.DEFAULT.value, foreground="#e5e7eb")
+        self.console_text.tag_configure(ConsoleTag.INFO.value, foreground="#93c5fd")
+        self.console_text.tag_configure(ConsoleTag.SUCCESS.value, foreground="#86efac")
+        self.console_text.tag_configure(ConsoleTag.WARNING.value, foreground="#fde68a")
+        self.console_text.tag_configure(ConsoleTag.ERROR.value, foreground="#fca5a5")
+        self.console_text.tag_configure(ConsoleTag.STEP.value, foreground="#e5e7eb")
+        self.console_text.tag_configure(ConsoleTag.ITERATION.value, foreground="#ffffff", font=("Consolas", 10, "bold"))
+        self.console_text.tag_configure(ConsoleTag.ELAPSED.value, foreground="#ff6b6b")
+
+    def set_script_text(self, content: str) -> None:
+        self.script_text.delete("1.0", tk.END)
+        self.script_text.insert("1.0", content.rstrip() + "\n")
+        self._refresh_script_view()
+
+    def _handle_script_change(self, _event: tk.Event) -> None:
+        self._refresh_script_view()
+
+    def _refresh_script_view(self) -> None:
+        self.apply_json_highlight()
+        self._update_line_numbers()
+
+    def _update_line_numbers(self) -> None:
+        content = self.script_text.get("1.0", "end-1c")
+        line_count = max(1, content.count("\n") + 1)
+        numbers = "\n".join(str(index) for index in range(1, line_count + 1))
+
+        self.line_numbers.config(state="normal")
+        self.line_numbers.delete("1.0", tk.END)
+        self.line_numbers.insert("1.0", numbers)
+        self.line_numbers.config(state="disabled")
+        self.line_numbers.yview_moveto(self.script_text.yview()[0])
+
+    def _on_script_scroll(self, first: str, last: str) -> None:
+        self.script_scrollbar.set(first, last)
+        self.line_numbers.yview_moveto(float(first))
+
+    def _sync_scroll(self, *args: Any) -> None:
+        self.script_text.yview(*args)
+        self.line_numbers.yview(*args)
 
     def apply_json_highlight(self) -> None:
-        text_widget = self.script_text
-        content = text_widget.get("1.0", "end-1c")
-
+        content = self.script_text.get("1.0", "end-1c")
         for tag in ("json_key", "json_string", "json_number", "json_boolean", "json_brace"):
-            text_widget.tag_remove(tag, "1.0", tk.END)
+            self.script_text.tag_remove(tag, "1.0", tk.END)
 
         for match in re.finditer(r'"([^"\\]*(?:\\.[^"\\]*)*)"\s*:', content):
             start = f"1.0+{match.start()}c"
             end = f"1.0+{match.end() - 1}c"
-            text_widget.tag_add("json_key", start, end)
+            self.script_text.tag_add("json_key", start, end)
 
         for match in re.finditer(r':\s*"([^"\\]*(?:\\.[^"\\]*)*)"', content):
-            colon_pos = match.group(0).find('"')
-            start = f"1.0+{match.start() + colon_pos}c"
+            colon_position = match.group(0).find('"')
+            start = f"1.0+{match.start() + colon_position}c"
             end = f"1.0+{match.end()}c"
-            text_widget.tag_add("json_string", start, end)
+            self.script_text.tag_add("json_string", start, end)
 
         for match in re.finditer(r"\b-?\d+(?:\.\d+)?\b", content):
             start = f"1.0+{match.start()}c"
             end = f"1.0+{match.end()}c"
-            text_widget.tag_add("json_number", start, end)
+            self.script_text.tag_add("json_number", start, end)
 
         for match in re.finditer(r"\b(true|false|null)\b", content):
             start = f"1.0+{match.start()}c"
             end = f"1.0+{match.end()}c"
-            text_widget.tag_add("json_boolean", start, end)
+            self.script_text.tag_add("json_boolean", start, end)
 
         for match in re.finditer(r"[\{\}\[\]]", content):
             start = f"1.0+{match.start()}c"
             end = f"1.0+{match.end()}c"
-            text_widget.tag_add("json_brace", start, end)
+            self.script_text.tag_add("json_brace", start, end)
 
     def refresh_script_dropdown(self) -> None:
-        values = [""] + [path.stem for path in sorted(ROTEIROS_DIR.glob("*.json"))]
+        values = [""] + [path.stem for path in sorted(Paths.ROTEIROS_DIR.glob("*.json"))]
         self.script_combo["values"] = values
         if self.selected_script_var.get() not in values:
             self.selected_script_var.set("")
 
     def refresh_table_dropdown(self) -> None:
-        values = [""] + [path.stem for path in sorted(TABELAS_DIR.glob("*.csv"))]
+        values = [""] + [path.stem for path in sorted(Paths.TABELAS_DIR.glob("*.csv"))]
         self.table_combo["values"] = values
         if self.selected_table_var.get() not in values:
             self.selected_table_var.set("")
 
     def open_help(self) -> None:
-        win = tk.Toplevel(self)
-        win.title("Help - Comandos do Roteiro")
-        win.geometry("980x720")
-        txt = tk.Text(win, wrap="word")
-        txt.pack(fill="both", expand=True)
-        txt.insert("1.0", HELP_TEXT)
-        txt.config(state="disabled")
+        help_text = self._load_help_text()
+        window = tk.Toplevel(self)
+        window.title("Help - Comandos do Roteiro")
+        window.geometry("980x720")
+        text_widget = tk.Text(window, wrap="word")
+        text_widget.pack(fill="both", expand=True)
+        text_widget.insert("1.0", help_text)
+        text_widget.config(state="disabled")
+
+    def _load_help_text(self) -> str:
+        if Paths.HELP_FILE.exists():
+            return Paths.HELP_FILE.read_text(encoding="utf-8")
+        return "Arquivo de help não encontrado. Verifique help_roteiro.txt."
 
     def open_table_editor(self) -> None:
         TableEditorWindow(self)
@@ -1437,15 +958,13 @@ class AutomationApp(tk.Tk):
         name = self.selected_script_var.get().strip()
         if not name:
             return
-        path = ROTEIROS_DIR / f"{name}.json"
+        path = Paths.ROTEIROS_DIR / f"{name}.json"
         if not path.exists():
             messagebox.showerror("Erro", "Roteiro não encontrado.")
             return
         self.script_name_var.set(name)
-        self.script_text.delete("1.0", tk.END)
-        self.script_text.insert("1.0", path.read_text(encoding="utf-8"))
-        self.apply_json_highlight()
-        self.log(f"Roteiro carregado: {name}", "info")
+        self.set_script_text(path.read_text(encoding="utf-8"))
+        self.log(f"Roteiro carregado: {name}", ConsoleTag.INFO.value)
 
     def save_script_from_main(self) -> None:
         name = self.script_name_var.get().strip() or "roteiro_principal"
@@ -1457,11 +976,12 @@ class AutomationApp(tk.Tk):
         except Exception as exc:
             messagebox.showerror("Erro de JSON", str(exc))
             return
-        path = ROTEIROS_DIR / f"{name}.json"
+
+        path = Paths.ROTEIROS_DIR / f"{name}.json"
         path.write_text(content, encoding="utf-8")
         self.refresh_script_dropdown()
         self.selected_script_var.set(name)
-        self.log(f"Roteiro salvo: {path.name}", "success")
+        self.log(f"Roteiro salvo: {path.name}", ConsoleTag.SUCCESS.value)
         messagebox.showinfo("OK", f"Roteiro salvo: {path.name}")
 
     def start_execution(self) -> None:
@@ -1493,26 +1013,26 @@ class AutomationApp(tk.Tk):
 
         def target() -> None:
             try:
-                self.log("Execução iniciada.", "info")
+                self.log("Execução iniciada.", ConsoleTag.INFO.value)
                 runner.run(steps, repetitions, selected_table)
             except Exception as exc:
-                self.log(f"ERRO: {exc}", "error")
+                self.log(f"ERRO: {exc}", ConsoleTag.ERROR.value)
             finally:
-                self.log("Thread finalizada.", "info")
+                self.log("Thread finalizada.", ConsoleTag.INFO.value)
 
         self.worker_thread = threading.Thread(target=target, daemon=True)
         self.worker_thread.start()
 
     def stop_execution(self) -> None:
         self.stop_event.set()
-        self.log("Solicitação de parada registrada.", "warning")
+        self.log("Solicitação de parada registrada.", ConsoleTag.WARNING.value)
 
     def clear_console(self) -> None:
         self.console_text.config(state="normal")
         self.console_text.delete("1.0", tk.END)
         self.console_text.config(state="disabled")
 
-    def log(self, message: str, tag: str = "default") -> None:
+    def log(self, message: str, tag: str = ConsoleTag.DEFAULT.value) -> None:
         timestamp = time.strftime("%H:%M:%S")
         self.log_queue.put((f"[{timestamp}] {message}", tag))
 

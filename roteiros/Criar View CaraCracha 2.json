@@ -27,12 +27,12 @@
   },
   {
     "info": "Solta tabela",
-    "mouse": {"x": 700, "y": 700, "acao": "move"},
+    "mouse": {"x": 700, "y": 700, "acao": "mover"},
     "esperar": {"depois": 0.1}
   },
   {
     "info": "Solta tabela",
-    "mouse": {"x": 750, "y": 750, "acao": "move"},
+    "mouse": {"x": 750, "y": 750, "acao": "mover"},
     "esperar": {"depois": 0.1}
   },
   {
@@ -67,8 +67,8 @@
   },
   {
     "info": "Calculated Column",
-    "mouse": {"x": 1780, "y": 640, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 1}
+    "mouse": {"x": 1720, "y": 680, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 1.6}
   },
   {
     "info": "Business Name",
@@ -138,7 +138,7 @@
   {
     "info": "Salvar",
     "mouse": {"x": 1260, "y": 1622, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 15}
+    "esperar": {"depois": 18}
   },
   {
     "info": "Fechar",
