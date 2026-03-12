@@ -4,225 +4,145 @@
   },
   {
     "info": "New Graphical view",
-    "mouse": {
-      "x": 400,
-      "y": 600,
-      "acao": "clicar_esquerdo"
-    },
-    "esperar": {
-      "depois": 4
-    }
+    "mouse": {"x": 400, "y": 600, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 4}
   },
   {
     "info": "Search",
-    "mouse": {
-      "x": 200,
-      "y": 480,
-      "acao": "clicar_esquerdo"
-    }
+    "mouse": {"x": 200, "y": 480, "acao": "clicar_esquerdo"}
   },
   {
     "info": "Cola Nome TABELA DATASPHERE",
-    "teclado": {
-      "campo_tabela": "criar_view_cara_cracha.TABELA_S4"
-    }
+    "teclado": {"campo_tabela": "criar_view_cara_cracha.TABELA_S4"}
   },
   {
     "info": "Pesquisa",
-    "teclado": {
-      "campo_tabela": "criar_view_cara_cracha.TABELA_S4"
-    }
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 1.5}
   },
   {
-    "obs": "Pesquisa",
-    "acao": "press:enter"
+    "info": "Arrasta tabela",
+    "mouse": {"x": 250, "y": 620, "acao": "clicar_segurar"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "Espera",
-    "acao": "wait:1.5"
+    "info": "Solta tabela",
+    "mouse": {"x": 700, "y": 700, "acao": "move"},
+    "esperar": {"depois": 0.1}
   },
   {
-    "obs": "Arrasta tabela",
-    "x": 250,
-    "y": 620,
-    "acao": "hold_click"
+    "info": "Solta tabela",
+    "mouse": {"x": 750, "y": 750, "acao": "move"},
+    "esperar": {"depois": 0.1}
   },
   {
-    "obs": "Espera",
-    "acao": "wait:0.3"
+    "info": "Solta tabela",
+    "mouse": {"x": 701, "y": 701, "acao": "clicar_soltar"},
+    "esperar": {"depois": 2.5}
   },
   {
-    "obs": "Solta tabela",
-    "x": 700,
-    "y": 700,
-    "acao": "move"
+    "info": "Clica na tela",
+    "mouse": {"x": 705, "y": 705, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.1}
   },
   {
-    "obs": "Solta tabela",
-    "x": 750,
-    "y": 750,
-    "acao": "move"
+    "info": "Centraliza objetos",
+    "teclado": {"pressionar": "F8"},
+    "esperar": {"depois": 0.5}
   },
   {
-    "obs": "Solta tabela",
-    "x": 701,
-    "y": 701,
-    "acao": "release_click"
+    "info": "Clica na View",
+    "mouse": {"x": 1040, "y": 1240, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "Espera",
-    "acao": "wait:2.5"
+    "info": "Criar campo calculado",
+    "mouse": {"x": 1170, "y": 1240, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 1}
   },
   {
-    "obs": "clica na tela",
-    "x": 705,
-    "y": 705,
-    "acao": "click"
+    "info": "Adicionar campo calculado",
+    "mouse": {"x": 1780, "y": 640, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "Centraliza objetos",
-    "acao": "hotkey:F8"
+    "info": "Calculated Column",
+    "mouse": {"x": 1780, "y": 640, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 1}
   },
   {
-    "obs": "Espera",
-    "acao": "wait:0.5"
+    "info": "Business Name",
+    "mouse": {"x": 1420, "y": 645, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "clica na tela 2x",
-    "x": 810,
-    "y": 810,
-    "acao": "click"
+    "info": "Business Name texto",
+    "teclado": {"digitar": "Clint"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "Centraliza objetos",
-    "acao": "hotkey:F8"
+    "info": "Technical Name",
+    "teclado": {"pressionar": "tab"}
   },
   {
-    "obs": "Espera",
-    "acao": "wait:0.5"
+    "info": "Technical Name texto",
+    "teclado": {"digitar": "MANDT"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "clica na View",
-    "x": 1040,
-    "y": 1240,
-    "acao": "click"
+    "info": "Length",
+    "teclado": {"pressionar": "tab"},
+    "repetir": 2
   },
   {
-    "obs": "Espera",
-    "acao": "wait:0.3"
+    "info": "Length valor",
+    "teclado": {"digitar": "3"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "Criar campo calculado",
-    "x": 1170,
-    "y": 1240,
-    "acao": "click"
+    "info": "Expression",
+    "mouse": {"x": 1500, "y": 1100, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "Espera",
-    "acao": "wait:1"
+    "info": "Expression Valor",
+    "teclado": {"funcao_py": "mandt"},
+    "esperar": {"depois": 0.6}
   },
   {
-    "obs": "+",
-    "x": 1780,
-    "y": 640,
-    "acao": "click + wait:0.3"
+    "info": "Validate",
+    "mouse": {"x": 1820, "y": 920, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "Calculated Column",
-    "x": 1700,
-    "y": 680,
-    "acao": "click + wait:1"
+    "info": "View_1",
+    "mouse": {"x": 1030, "y": 1230, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 1.6}
   },
   {
-    "obs": "Business Name",
-    "x": 1420,
-    "y": 645,
-    "acao": "double_click + wait:0.3"
+    "info": "View_1 name",
+    "mouse": {"x": 1500, "y": 600, "acao": "clicar_duplo"},
+    "repetir": 2,
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "Business Name texto",
-    "acao": "type:Clint + wait:0.3"
+    "info": "View Business name",
+    "teclado": {"campo_tabela": "criar_view_cara_cracha.VIEW_DS"},
+    "esperar": {"depois": 0.3}
   },
   {
-    "obs": "Technical Name",
-    "acao": "press:tab"
+    "info": "Deploy",
+    "mouse": {"x": 250, "y": 310, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 1}
   },
   {
-    "obs": "Technical Name texto",
-    "acao": "type:MANDT + wait:0.3"
+    "info": "Salvar",
+    "mouse": {"x": 1260, "y": 1622, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 15}
   },
   {
-    "obs": "Length",
-    "acao": "repeat:2|press:tab"
-  },
-  {
-    "obs": "Length",
-    "acao": "type:3 + wait:0.3"
-  },
-  {
-    "obs": "Expression",
-    "x": 1500,
-    "y": 1100,
-    "acao": "double_click"
-  },
-  {
-    "obs": "Expression",
-    "acao": "transform_copy:mandt"
-  },
-  {
-    "obs": "Colar resultado",
-    "acao": "hotkey:ctrl+v"
-  },
-  {
-    "obs": "Espera",
-    "acao": "wait:0.3"
-  },
-  {
-    "obs": "Validate",
-    "x": 1820,
-    "y": 920,
-    "acao": "click + wait:0.3"
-  },
-  {
-    "obs": "View_1",
-    "x": 1030,
-    "y": 1230,
-    "acao": "click + wait:1.6"
-  },
-  {
-    "obs": "View_1 name",
-    "x": 1500,
-    "y": 600,
-    "acao": "double_click + double_click"
-  },
-  {
-    "obs": "Espera",
-    "acao": "wait:0.3"
-  },
-  {
-    "obs": "View Business name",
-    "acao": "reg_table:VIEW_DS"
-  },
-  {
-    "obs": "Espera",
-    "acao": "wait:0.3"
-  },
-  {
-    "obs": "Deploy",
-    "x": 250,
-    "y": 310,
-    "acao": "click + wait:1"
-  },
-  {
-    "obs": "Salvar",
-    "x": 1260,
-    "y": 1622,
-    "acao": "click + wait:15"
-  },
-  {
-    "obs": "Fechar",
-    "x": 1160,
-    "y": 210,
-    "acao": "click + wait:2"
+    "info": "Fechar",
+    "mouse": {"x": 1160, "y": 210, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 2}
   }
 ]

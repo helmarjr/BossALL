@@ -1165,7 +1165,7 @@ class ScriptEditorWindow(tk.Toplevel):
                 "teclado": {"pressionar": "enter"},
             },
         ]
-        return json.dumps(sample, indent=2, ensure_ascii=False)
+        return json.dumps(sample, ensure_ascii=False)
 
     def refresh_list(self) -> None:
         self.listbox.delete(0, tk.END)
@@ -1204,7 +1204,7 @@ class ScriptEditorWindow(tk.Toplevel):
             return
 
         path = ROTEIROS_DIR / f"{name}.json"
-        path.write_text(json.dumps(parsed, indent=2, ensure_ascii=False), encoding="utf-8")
+        path.write_text(content, encoding="utf-8")
         self.app.refresh_script_dropdown()
         self.refresh_list()
         messagebox.showinfo("OK", f"Roteiro salvo: {path.name}")
@@ -1328,7 +1328,6 @@ class AutomationApp(tk.Tk):
                         "teclado": {"pressionar": "enter"},
                     },
                 ],
-                indent=2,
                 ensure_ascii=False,
             ),
         )
@@ -1459,7 +1458,7 @@ class AutomationApp(tk.Tk):
             messagebox.showerror("Erro de JSON", str(exc))
             return
         path = ROTEIROS_DIR / f"{name}.json"
-        path.write_text(json.dumps(parsed, indent=2, ensure_ascii=False), encoding="utf-8")
+        path.write_text(content, encoding="utf-8")
         self.refresh_script_dropdown()
         self.selected_script_var.set(name)
         self.log(f"Roteiro salvo: {path.name}", "success")
