@@ -13,7 +13,7 @@
   },
   {
     "info": "Cola Nome TABELA DATASPHERE",
-    "teclado": {"campo_tabela": "criar_view_cara_cracha.TABELA_S4"}
+    "teclado": {"campo_tabela": "caracracha_1.TABELA_S4"}
   },
   {
     "info": "Pesquisa",
@@ -127,7 +127,7 @@
   },
   {
     "info": "View Business name",
-    "teclado": {"campo_tabela": "criar_view_cara_cracha.VIEW_DS"},
+    "teclado": {"campo_tabela": "caracracha_1.VIEW_DS"},
     "esperar": {"depois": 0.3}
   },
   {

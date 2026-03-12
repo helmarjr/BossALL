@@ -1,0 +1,133 @@
+[
+  {
+    "info": "Roteiro para Criar View Cara Crachá em 2 telas"
+  },
+  {
+    "info": "New Graphical view",
+    "mouse": {"x": 400, "y": 600, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "New Graphical view",
+    "mouse": {"x": 2300, "y": 600, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 5}
+  },
+
+
+
+
+
+  {
+    "info": "Search",
+    "mouse": {"x": 200, "y": 480, "acao": "clicar_esquerdo"}
+  },
+  {
+    "info": "Cola Nome TABELA DATASPHERE",
+    "teclado": {"campo_tabela": "caracracha_1.TABELA_S4"}
+  },
+  {
+    "info": "Pesquisa",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0}
+  },
+ {
+    "info": "Search",
+    "mouse": {"x": 2100, "y": 480, "acao": "clicar_esquerdo"}
+  },
+  {
+    "info": "Cola Nome TABELA DATASPHERE",
+    "teclado": {"campo_tabela": "caracracha_2.TABELA_S4"}
+  },
+  {
+    "info": "Pesquisa",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 1.5}
+  },
+
+
+
+
+
+
+  {
+    "info": "Arrasta tabela",
+    "mouse": {"x": 250, "y": 620, "acao": "clicar_segurar"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 700, "y": 700, "acao": "mover"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 750, "y": 750, "acao": "mover"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 701, "y": 701, "acao": "clicar_soltar"},
+    "esperar": {"depois": 1.5}
+  },
+  {
+    "info": "Arrasta tabela",
+    "mouse": {"x": 2150, "y": 620, "acao": "clicar_segurar"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 2600, "y": 700, "acao": "mover"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 2650, "y": 750, "acao": "mover"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 2601, "y": 701, "acao": "clicar_soltar"},
+    "esperar": {"depois": 1.5}
+  },
+
+
+
+
+  {
+    "info": "Foco na Janela",
+    "mouse": {"x": 700, "y": 700, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Centraliza objetos",
+    "teclado": {"pressionar": "F8"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Foco na Janela",
+    "mouse": {"x": 2600, "y": 700, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Centraliza objetos",
+    "teclado": {"pressionar": "F8"},
+    "esperar": {"depois": 0.5}
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+]
