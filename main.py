@@ -54,6 +54,9 @@ Comandos:
 - type:Texto aqui
   Digita/cola um texto.
 
+- type:'500'
+  Digita exatamente '500', incluindo as aspas simples.
+
 - move
   Requer x e y no passo.
 
@@ -337,7 +340,9 @@ class ScriptRunner:
             return
 
         if action.startswith('type:'):
-            text = self._replace_placeholders(action.split(':', 1)[1], i, table_contexts, default_table, acquired_tables)
+            # Mantém exatamente tudo o que vier após "type:", inclusive aspas simples ou duplas.
+            raw_text = action[len('type:'):]
+            text = self._replace_placeholders(raw_text, i, table_contexts, default_table, acquired_tables)
             if pyperclip:
                 pyperclip.copy(text)
                 pyautogui.hotkey('ctrl', 'v')
@@ -455,7 +460,7 @@ class TableEditorWindow(tk.Toplevel):
     def __init__(self, master: 'AutomationApp') -> None:
         super().__init__(master)
         self.app = master
-        self.title('CRUD de Tabelas (CSV)')
+        self.title('Tabelas')
         self.geometry('900x560')
         self._build()
         self.refresh_list()
@@ -545,7 +550,7 @@ class ScriptEditorWindow(tk.Toplevel):
     def __init__(self, master: 'AutomationApp') -> None:
         super().__init__(master)
         self.app = master
-        self.title('CRUD de Roteiros (JSON)')
+        self.title('Roteiros')
         self.geometry('980x620')
         self._build()
         self.refresh_list()
@@ -677,8 +682,8 @@ class AutomationApp(tk.Tk):
         self.script_combo.grid(row=0, column=1, sticky='we', padx=4, pady=4)
         ttk.Button(top, text='Carregar', command=self.load_selected_script).grid(row=0, column=2, padx=4, pady=4)
         ttk.Button(top, text='Salvar como roteiro', command=self.save_script_from_main).grid(row=0, column=3, padx=4, pady=4)
-        ttk.Button(top, text='CRUD Roteiros', command=self.open_script_editor).grid(row=0, column=4, padx=4, pady=4)
-        ttk.Button(top, text='CRUD Tabelas', command=self.open_table_editor).grid(row=0, column=5, padx=4, pady=4)
+        ttk.Button(top, text='Roteiros', command=self.open_script_editor).grid(row=0, column=4, padx=4, pady=4)
+        ttk.Button(top, text='Tabelas', command=self.open_table_editor).grid(row=0, column=5, padx=4, pady=4)
         ttk.Button(top, text='Help', command=self.open_help).grid(row=0, column=6, padx=4, pady=4)
 
         ttk.Label(top, text='Nome do roteiro atual:').grid(row=1, column=0, sticky='w', padx=4, pady=4)

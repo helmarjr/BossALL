@@ -28,6 +28,9 @@ def remover_espacos(texto: str) -> str:
 def capitalizar(texto: str) -> str:
     return texto.title()
 
+def mandt(texto: str) -> str:
+    return f"'500'"
+
 def trocar_prefixo_tabela_rf(texto: str) -> str:
     """
     Exemplo:
@@ -59,4 +62,5 @@ TRANSFORMACOES = {
     'remover_espacos': remover_espacos,
     'capitalizar': capitalizar,
     'trocar_prefixo_tabela_rf': trocar_prefixo_tabela_rf,
+    'mandt': mandt,
 }
