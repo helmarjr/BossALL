@@ -39,5 +39,5 @@ temp/
 tmp/
 
 # Excel/CSV de teste ou arquivos gerados localmente, ajuste se precisar
-tabelas/*.csv
+tabelas/*.*
 # roteiros/*.json
