@@ -1,0 +1,43 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build / distribution
+build/
+dist/
+*.egg-info/
+
+# Local config / secrets
+.env
+.env.*
+
+# Tkinter / app local artifacts, se existirem
+logs/
+temp/
+tmp/
+
+# Excel/CSV de teste ou arquivos gerados localmente, ajuste se precisar
+tabelas/*.csv
+# roteiros/*.json
