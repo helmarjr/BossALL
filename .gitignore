@@ -1,14 +1,7 @@
-# Byte-compiled / cache
+# Python cache
 __pycache__/
 *.py[cod]
-*.pyo
 
-# Virtual environment
-.venv/
-venv/
-env/
-
-# IDE / editor
 .vscode/
 .idea/
 
@@ -33,11 +26,14 @@ dist/
 .env
 .env.*
 
-# Tkinter / app local artifacts, se existirem
+# Tkinter / app local artifacts
 logs/
 temp/
 tmp/
 
-# Excel/CSV de teste ou arquivos gerados localmente, ajuste se precisar
-tabelas/*.*
+# Arquivos da pasta tabelas
+tabelas/*
+!tabelas/.gitkeep
+
+# Se quiser também manter roteiros fora do Git, descomente:
 # roteiros/*.json
