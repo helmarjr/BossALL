@@ -2,24 +2,67 @@
   {
     "info": "Roteiro para Criar View Cara Crachá em 2 telas"
   },
+
   {
-    "info": "New Graphical view",
-    "mouse": {"x": 400, "y": 600, "acao": "clicar_esquerdo"},
+    "info": "tab",
+    "mouse": {"x": 900, "y": 25, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "url new tab",
+    "teclado": {"atalho":"ctrl+t"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "New View",
+    "teclado": {"digitar":"https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/VALE_S4H_ING/-newGraphicalView"},
     "esperar": {"depois": 0}
   },
   {
-    "info": "New Graphical view",
-    "mouse": {"x": 2300, "y": 600, "acao": "clicar_esquerdo"},
+    "info": "url text",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0.3}
+  },
+   {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgup"},
+    "esperar": {"depois": 0.2}
+  },
+
+  
+  {
+    "info": "tab",
+    "mouse": {"x": 2900, "y": 25, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "url new tab",
+    "teclado": {"atalho":"ctrl+t"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "New View",
+    "teclado": {"digitar":"https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/VALE_S4H_ING/-newGraphicalView"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "url text",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0.3}
+  },  
+   {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgup"},
     "esperar": {"depois": 5}
   },
 
 
 
-
+ 
   {
     "info": "All",
-    "mouse": {"x": 135, "y": 522, "acao": "clicar_esquerdo"},
-"esperar": {"depois": 0.2}
+    "mouse": {"x": 135, "y": 522, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.2}
   },
   {
     "info": "Search",
@@ -36,8 +79,8 @@
   },
   {
     "info": "All",
-    "mouse": {"x": 2060, "y": 522, "acao": "clicar_esquerdo"},
-"esperar": {"depois": 0.2}
+    "mouse": {"x": 2060, "y": 522, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.2}
   },
  {
     "info": "Search",
@@ -96,7 +139,7 @@
   {
     "info": "Solta tabela",
     "mouse": {"x": 2601, "y": 701, "acao": "clicar_soltar"},
-    "esperar": {"depois": 3}
+    "esperar": {"depois": 6}
   },
 
 
@@ -110,7 +153,7 @@
   {
     "info": "Centraliza objetos",
     "teclado": {"pressionar": "F8"},
-    "esperar": {"depois": 0.2}
+    "esperar": {"depois": 0.6}
   },
   {
     "info": "Foco na Janela",
@@ -126,11 +169,7 @@
 
 
 
-
-
-
-
-  {
+{
     "info": "Alterar nome da view",
     "mouse": {"x": 1500, "y": 600, "acao": "clicar_duplo"},
     "repetir": 2,
@@ -288,29 +327,48 @@
 
 
 
-
-  {
-    "info": "Validate",
-    "mouse": {"x": 1820, "y": 920, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.3}
-  },
-  {
-    "info": "Validate",
-    "mouse": {"x": 3720, "y": 920, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.3}
-  },
-
-
-
   {
     "info": "Deploy",
     "mouse": {"x": 250, "y": 310, "acao": "clicar_esquerdo"},
     "esperar": {"depois": 0.3}
   },
   {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgup"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "close tab",
+    "teclado": {"atalho":"ctrl+w"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "confirm close",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0.2}
+  },
+
+
+
+  {
     "info": "Deploy",
     "mouse": {"x": 2160, "y": 310, "acao": "clicar_esquerdo"},
     "esperar": {"depois": 0.5}
+  },
+  {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgup"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "close tab",
+    "teclado": {"atalho":"ctrl+w"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "confirm Close",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0.2}
   },
 
 
@@ -320,43 +378,13 @@
     "mouse": {"x": 1260, "y": 1622, "acao": "clicar_esquerdo"},
     "esperar": {"depois": 0.3}
   },
+  
   {
     "info": "Salvar",
     "mouse": {"x": 3160, "y": 1622, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 22}
-  },
-
-
- {
-    "info": "Fechar janela Warnig",
-    "mouse": {"x": 1130, "y": 1162, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 1}
-  },
-  {
-    "info": "Fechar janela Warnig",
-    "mouse": {"x": 3060, "y": 1162, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 1}
-  },
-
-
-
-  {
-    "info": "Fechar",
-    "mouse": {"x": 650, "y": 200, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.3}
-  },
-  {
-    "info": "Fechar",
-    "mouse": {"x": 2550, "y": 210, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 1}
-  },
-  {
-    "info": "Fechar",
-    "mouse": {"x": 2550, "y": 210, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 1}
+    "esperar": {"depois": 2}
   }
-
-
+  
 
   
 ]
