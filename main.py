@@ -7,6 +7,7 @@ import queue
 import re
 import threading
 import time
+import random
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -436,6 +437,52 @@ class ScriptRunner:
                 f"Subitem de teclado inválido: {action}. Use digitar, atalho, pressionar, campo_tabela ou funcao_py."
             )
 
+    def _clipboard_copy_with_retry(self, text: str, retries: int = 5, base_delay: float = 0.12) -> None:
+        if pyperclip is None:
+            raise RuntimeError("pyperclip não está instalado.")
+        last_error: Exception | None = None
+        for attempt in range(1, retries + 1):
+            try:
+                pyperclip.copy(text)
+                return
+            except Exception as exc:
+                last_error = exc
+                if attempt < retries:
+                    wait_time = base_delay * attempt + random.uniform(0.01, 0.05)
+                    self.log(
+                        f"Clipboard ocupado ao copiar. Tentando novamente ({attempt}/{retries}) em {wait_time:.2f}s...",
+                        ConsoleTag.WARNING.value,
+                    )
+                    time.sleep(wait_time)
+                else:
+                    break
+        raise RuntimeError(f"Falha ao copiar para o clipboard após {retries} tentativas: {last_error}") from last_error
+
+    def _clipboard_paste_with_retry(self, retries: int = 5, base_delay: float = 0.12) -> str:
+        if pyperclip is None:
+            raise RuntimeError("pyperclip não está instalado.")
+        last_error: Exception | None = None
+        for attempt in range(1, retries + 1):
+            try:
+                return pyperclip.paste()
+            except Exception as exc:
+                last_error = exc
+                if attempt < retries:
+                    wait_time = base_delay * attempt + random.uniform(0.01, 0.05)
+                    self.log(
+                        f"Clipboard ocupado ao ler. Tentando novamente ({attempt}/{retries}) em {wait_time:.2f}s...",
+                        ConsoleTag.WARNING.value,
+                    )
+                    time.sleep(wait_time)
+                else:
+                    break
+        raise RuntimeError(f"Falha ao ler o clipboard após {retries} tentativas: {last_error}") from last_error
+
+    def _paste_via_clipboard(self, text: str) -> None:
+        self._clipboard_copy_with_retry(text)
+        time.sleep(0.05)
+        pyautogui.hotkey("ctrl", "v")
+
     def _execute_transform_function(self, function_name: str) -> None:
         if pyperclip is None:
             raise RuntimeError("pyperclip não está instalado. Instale para usar funcao_py.")
@@ -444,17 +491,17 @@ class ScriptRunner:
             raise KeyError(f"Função não encontrada em TRANSFORMACOES: {function_name}")
 
         pyautogui.hotkey("ctrl", "c")
-        time.sleep(0.15)
-        original_text = pyperclip.paste()
+        time.sleep(0.25)
+        original_text = self._clipboard_paste_with_retry()
         transformed_text = function(original_text)
-        pyperclip.copy(str(transformed_text))
+        self._clipboard_copy_with_retry(str(transformed_text))
+        time.sleep(0.05)
         pyautogui.hotkey("ctrl", "v")
         self.log(f"funcao_py aplicada: {function_name}", ConsoleTag.INFO.value)
 
     def _write_text(self, text: str) -> None:
         if pyperclip is not None:
-            pyperclip.copy(text)
-            pyautogui.hotkey("ctrl", "v")
+            self._paste_via_clipboard(text)
         else:
             pyautogui.write(text, interval=0)
 
@@ -704,7 +751,7 @@ class ScriptEditorWindow(BaseEditorWindow):
 class AutomationApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
-        self.title("Automação de Teclado e Mouse")
+        self.title("Roterize")
         self.geometry("1240x800")
 
         self.script_name_var = tk.StringVar()
