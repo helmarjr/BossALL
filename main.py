@@ -437,7 +437,7 @@ class ScriptRunner:
                 f"Subitem de teclado inválido: {action}. Use digitar, atalho, pressionar, campo_tabela ou funcao_py."
             )
 
-    def _clipboard_copy_with_retry(self, text: str, retries: int = 5, base_delay: float = 0.12) -> None:
+    def _clipboard_copy_with_retry(self, text: str, retries: int = 15, base_delay: float = 0.20) -> None:
         if pyperclip is None:
             raise RuntimeError("pyperclip não está instalado.")
         last_error: Exception | None = None
@@ -458,7 +458,7 @@ class ScriptRunner:
                     break
         raise RuntimeError(f"Falha ao copiar para o clipboard após {retries} tentativas: {last_error}") from last_error
 
-    def _clipboard_paste_with_retry(self, retries: int = 5, base_delay: float = 0.12) -> str:
+    def _clipboard_paste_with_retry(self, retries: int = 15, base_delay: float = 0.20) -> str:
         if pyperclip is None:
             raise RuntimeError("pyperclip não está instalado.")
         last_error: Exception | None = None
@@ -500,10 +500,18 @@ class ScriptRunner:
         self.log(f"funcao_py aplicada: {function_name}", ConsoleTag.INFO.value)
 
     def _write_text(self, text: str) -> None:
-        if pyperclip is not None:
-            self._paste_via_clipboard(text)
-        else:
+        if pyperclip is None:
             pyautogui.write(text, interval=0)
+            return
+
+        try:
+            self._paste_via_clipboard(text)
+        except Exception as exc:
+            self.log(
+                f"Clipboard indisponível. Usando digitação direta como fallback. Motivo: {exc}",
+                ConsoleTag.WARNING.value,
+            )
+            pyautogui.write(text, interval=0.01)
 
     def _parse_xy_value(self, value: Any, context: StepContext) -> int:
         if value is None:

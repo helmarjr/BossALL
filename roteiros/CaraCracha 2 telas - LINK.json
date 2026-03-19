@@ -15,7 +15,7 @@
   },
   {
     "info": "New View",
-    "teclado": {"digitar":"https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/VALE_S4H_ING/-newGraphicalView"},
+    "teclado": {"digitar":"https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/SLT_ECC_R/-newGraphicalView"},
     "esperar": {"depois": 0}
   },
   {
@@ -42,7 +42,7 @@
   },
   {
     "info": "New View",
-    "teclado": {"digitar":"https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/VALE_S4H_ING/-newGraphicalView"},
+    "teclado": {"digitar":"https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/SLT_ECC_R/-newGraphicalView"},
     "esperar": {"depois": 0}
   },
   {
