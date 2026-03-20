@@ -20,6 +20,14 @@ Exemplo:
   {
     "info": "Digita texto fixo",
     "teclado": {"digitar": "Teste"}
+  },
+  {
+    "info": "Salvar print",
+    "printscreen": {
+      "pasta": "C:/prints",
+      "nome_arquivo": "Documento [NOME] 2025",
+      "formato": "png"
+    }
   }
 ]
 
@@ -32,11 +40,12 @@ Cada item pode ter:
 - "esperar"
 - "mouse"
 - "teclado"
+- "printscreen"
 - "repetir"
 
 Regras:
-- Cada item deve ter somente 1 ação principal: OU "mouse" OU "teclado".
-- Não use "mouse" e "teclado" juntos no mesmo item.
+- Cada item deve ter somente 1 ação principal: OU "mouse" OU "teclado" OU "printscreen".
+- Não use mais de uma ação principal no mesmo item.
 - "repetir" repete o item atual.
 - "esperar" pode ser usado antes e/ou depois do item.
 - "info" é apenas descritivo e aparece no console.
@@ -196,16 +205,137 @@ Comportamento:
 - cola o retorno no campo selecionado
 
 ============================================================
-6) PLACEHOLDERS
+6) ITEM PRINTSCREEN
+============================================================
+
+Formato básico:
+"printscreen": {
+  "pasta": "C:/prints",
+  "nome_arquivo": "Documento [clientes.NOME] 2025",
+  "formato": "png"
+}
+
+Subitens possíveis:
+- pasta
+- nome_arquivo
+- formato
+- sobrescrever
+- regiao
+
+6.1) printscreen.pasta
+------------------------------------------------------------
+Caminho da pasta onde o arquivo será salvo.
+
+Exemplo:
+"pasta": "C:/prints"
+
+Comportamento:
+- se a pasta não existir, o app tenta criar automaticamente.
+
+6.2) printscreen.nome_arquivo
+------------------------------------------------------------
+Define o nome do arquivo sem a extensão.
+
+Pode ser:
+- valor fixo
+- texto com partes dinâmicas vindas da tabela usando colchetes []
+
+Exemplos:
+"nome_arquivo": "Documento 2025"
+"nome_arquivo": "[clientes.NOME]"
+"nome_arquivo": "Documento [clientes.NOME] 2025"
+"nome_arquivo": "Print_[CODIGO]_[DESCRICAO]"
+
+Regra dos colchetes:
+- texto fora de [] = valor fixo
+- texto dentro de [] = valor dinâmico
+- sem colchetes = nome totalmente fixo
+
+Formatos aceitos dentro de []:
+a) usando a tabela selecionada no dropdown:
+[NOME]
+
+b) usando tabela específica:
+[clientes.NOME]
+
+Regras:
+1. Se houver ponto dentro de []:
+   - primeiro nome = nome da tabela sem .csv
+   - segundo nome = coluna
+2. Se não houver ponto dentro de []:
+   - usa a tabela selecionada no dropdown principal
+3. Pode haver um ou vários blocos dinâmicos no mesmo nome.
+4. Caracteres inválidos para nome de arquivo são removidos automaticamente.
+5. A extensão do arquivo vem do campo "formato".
+
+6.3) printscreen.formato
+------------------------------------------------------------
+Define a extensão/formato da imagem.
+
+Formatos aceitos:
+- png
+- jpg
+- jpeg
+- bmp
+
+Exemplo:
+"formato": "png"
+
+Se não informar, o padrão é png.
+
+6.4) printscreen.sobrescrever
+------------------------------------------------------------
+Informa se um arquivo existente pode ser substituído.
+
+Exemplos:
+"sobrescrever": true
+"sobrescrever": false
+
+Comportamento:
+- true  -> substitui o arquivo existente
+- false -> gera erro se o arquivo já existir
+
+Se não informar, o padrão é false.
+
+6.5) printscreen.regiao
+------------------------------------------------------------
+Permite capturar apenas uma parte da tela.
+
+Formato:
+"regiao": {
+  "x": 100,
+  "y": 200,
+  "largura": 1200,
+  "altura": 800
+}
+
+Subitens obrigatórios em regiao:
+- x
+- y
+- largura
+- altura
+
+Comportamento:
+- se informar "regiao", captura apenas aquela área
+- se não informar "regiao", captura a tela inteira
+
+============================================================
+7) PLACEHOLDERS
 ============================================================
 
 Suportado:
 - {i}
 
+Observação:
+- {i} continua disponível em textos normais do roteiro
+- no campo printscreen.nome_arquivo, os valores dinâmicos de tabela usam colchetes []
+
 ============================================================
-7) EXEMPLO COMPLETO
+8) EXEMPLOS COMPLETOS
 ============================================================
 
+8.1) Exemplo geral
+------------------------------------------------------------
 [
   {
     "info": "Mover até o campo",
@@ -231,31 +361,69 @@ Suportado:
   }
 ]
 
+8.2) Print com nome fixo
+------------------------------------------------------------
+[
+  {
+    "info": "Salvar print com nome fixo",
+    "printscreen": {
+      "pasta": "C:/prints",
+      "nome_arquivo": "Documento 2025",
+      "formato": "png",
+      "sobrescrever": false
+    }
+  }
+]
+
+8.3) Print com nome vindo da tabela padrão
+------------------------------------------------------------
+[
+  {
+    "info": "Salvar print com nome da tabela padrão",
+    "printscreen": {
+      "pasta": "C:/prints",
+      "nome_arquivo": "Documento [NOME_PRINT] 2025",
+      "formato": "png"
+    }
+  }
+]
+
+8.4) Print com nome vindo de tabela específica
+------------------------------------------------------------
+[
+  {
+    "info": "Salvar print com nome da tabela específica",
+    "printscreen": {
+      "pasta": "C:/prints",
+      "nome_arquivo": "Documento [caracracha_1.NOME_PRINT] 2025",
+      "formato": "png"
+    }
+  }
+]
+
+8.5) Print de região específica
+------------------------------------------------------------
+[
+  {
+    "info": "Salvar print de uma área da tela",
+    "printscreen": {
+      "pasta": "C:/prints",
+      "nome_arquivo": "Tela [CODIGO]",
+      "formato": "png",
+      "regiao": {
+        "x": 100,
+        "y": 200,
+        "largura": 1200,
+        "altura": 800
+      }
+    }
+  }
+]
+
 ============================================================
-8) REGRAS DAS TABELAS CSV
+9) REGRAS DAS TABELAS CSV
 ============================================================
 
 - Separador preferencial: ;
 - Deve possuir cabeçalho
 - Se STATUS não existir, o app cria
-- STATUS=OK significa registro já consumido
-- Registros com STATUS=OK não são reutilizados
-- O OK é gravado ao final da iteração executada com sucesso
-- Pode haver uso de múltiplas tabelas no mesmo roteiro
-
-============================================================
-9) CONSOLE
-============================================================
-
-- O console é limpo automaticamente antes de cada execução
-- A linha de iteração aparece em negrito:
-  --- Iteração X/Y ---
-- Cada item do JSON é logado em uma única linha
-- Ao final da iteração o tempo total aparece em vermelho
-
-============================================================
-10) SEGURANÇA
-============================================================
-
-- O FAILSAFE do pyautogui está ativo
-- Mova o mouse para o canto superior esquerdo para interromper por FAILSAFE

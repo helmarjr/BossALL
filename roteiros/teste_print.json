@@ -1,0 +1,17 @@
+[
+  {
+  "info": "Salvar print",
+  "printscreen": {
+    "pasta": "C:/prints",
+    "nome_arquivo": "Documento [caracracha_1.VIEW_DS]",
+    "regiao": {
+      "x": 500,
+      "y": 500,
+      "largura": 400,
+      "altura": 400
+    },
+    "formato": "png",
+    "sobrescrever": false
+  }
+}
+]
