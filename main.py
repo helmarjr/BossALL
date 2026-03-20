@@ -1,3 +1,4 @@
+
 from __future__ import annotations
 
 import csv
@@ -280,8 +281,6 @@ class ScriptRunner:
                 self._execute_mouse(action_payload, context)
             elif action_kind == "teclado":
                 self._execute_keyboard(action_payload, context)
-            elif action_kind == "printscreen":
-                self._execute_printscreen(action_payload, context)
 
             if after_wait > 0:
                 time.sleep(after_wait)
@@ -289,17 +288,13 @@ class ScriptRunner:
     def _get_action_payload(self, step: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None]:
         has_mouse = isinstance(step.get("mouse"), dict) and bool(step.get("mouse"))
         has_keyboard = isinstance(step.get("teclado"), dict) and bool(step.get("teclado"))
-        has_printscreen = isinstance(step.get("printscreen"), dict) and bool(step.get("printscreen"))
 
-        action_count = sum(bool(item) for item in (has_mouse, has_keyboard, has_printscreen))
-        if action_count > 1:
-            raise ValueError("Cada item pode ter somente 1 ação principal: mouse, teclado OU printscreen.")
+        if has_mouse and has_keyboard:
+            raise ValueError("Cada item pode ter somente 1 ação principal: mouse OU teclado.")
         if has_mouse:
             return "mouse", step["mouse"]
         if has_keyboard:
             return "teclado", step["teclado"]
-        if has_printscreen:
-            return "printscreen", step["printscreen"]
         return None, None
 
     def _build_step_summary(
@@ -321,10 +316,6 @@ class ScriptRunner:
         elif action_kind == "teclado" and action_payload:
             key, value = next(iter(action_payload.items()))
             parts.append(f"TECLADO={key}:{value}")
-        elif action_kind == "printscreen" and action_payload:
-            parts.append(
-                f"PRINTSCREEN=nome:{action_payload.get('nome_arquivo')}, pasta:{action_payload.get('pasta')}, formato:{action_payload.get('formato', 'png')}"
-            )
         if repeat_count > 1:
             parts.append(f"REPETIR={repeat_count}")
         if after_wait > 0:
@@ -335,16 +326,16 @@ class ScriptRunner:
         table_names: set[str] = set()
         for step in steps:
             keyboard = step.get("teclado")
-            if isinstance(keyboard, dict):
-                reference = keyboard.get("campo_tabela")
-                if reference:
-                    table_names.update(self._extract_table_names_from_reference(str(reference)))
-
-            printscreen = step.get("printscreen")
-            if isinstance(printscreen, dict):
-                template = printscreen.get("nome_arquivo")
-                if template:
-                    table_names.update(self._extract_table_names_from_template(str(template)))
+            if not isinstance(keyboard, dict):
+                continue
+            reference = keyboard.get("campo_tabela")
+            if not reference:
+                continue
+            raw = str(reference).strip()
+            if "." not in raw:
+                continue
+            table_name, _field = raw.split(".", 1)
+            table_names.add(table_name.strip())
         return table_names
 
     def _has_rows_available(
@@ -362,25 +353,17 @@ class ScriptRunner:
         table_names: set[str] = set()
         for step in steps:
             keyboard = step.get("teclado")
-            if isinstance(keyboard, dict):
-                reference = keyboard.get("campo_tabela")
-                if reference:
-                    raw = str(reference).strip()
-                    if "." in raw:
-                        table_name, _field = raw.split(".", 1)
-                        table_names.add(table_name.strip())
-                    elif default_table is not None:
-                        table_names.add(default_table.name)
-
-            printscreen = step.get("printscreen")
-            if isinstance(printscreen, dict):
-                template = printscreen.get("nome_arquivo")
-                if template:
-                    explicit_tables = self._extract_table_names_from_template(str(template))
-                    if explicit_tables:
-                        table_names.update(explicit_tables)
-                    elif self._template_uses_default_table(str(template)) and default_table is not None:
-                        table_names.add(default_table.name)
+            if not isinstance(keyboard, dict):
+                continue
+            reference = keyboard.get("campo_tabela")
+            if not reference:
+                continue
+            raw = str(reference).strip()
+            if "." in raw:
+                table_name, _field = raw.split(".", 1)
+                table_names.add(table_name.strip())
+            elif default_table is not None:
+                table_names.add(default_table.name)
         return table_names
 
     def _parse_wait(self, wait_value: Any) -> tuple[float, float]:
@@ -453,100 +436,6 @@ class ScriptRunner:
             raise ValueError(
                 f"Subitem de teclado inválido: {action}. Use digitar, atalho, pressionar, campo_tabela ou funcao_py."
             )
-
-    def _execute_printscreen(self, payload: dict[str, Any], context: StepContext) -> None:
-        if not isinstance(payload, dict) or not payload:
-            raise ValueError("O objeto printscreen deve ser um dicionário válido.")
-
-        output_folder = str(payload.get("pasta") or "").strip()
-        if not output_folder:
-            raise ValueError("printscreen.pasta é obrigatório.")
-
-        name_template = str(payload.get("nome_arquivo") or "").strip()
-        if not name_template:
-            raise ValueError("printscreen.nome_arquivo é obrigatório.")
-
-        image_format = str(payload.get("formato") or "png").strip().lower()
-        if image_format not in {"png", "jpg", "jpeg", "bmp"}:
-            raise ValueError("printscreen.formato inválido. Use png, jpg, jpeg ou bmp.")
-
-        overwrite = bool(payload.get("sobrescrever", False))
-        region = self._parse_screenshot_region(payload.get("regiao"), context)
-        file_name = self._resolve_filename_template(name_template, context)
-
-        folder_path = Path(output_folder)
-        folder_path.mkdir(parents=True, exist_ok=True)
-
-        file_path = folder_path / f"{file_name}.{image_format}"
-        if file_path.exists() and not overwrite:
-            raise FileExistsError(f"Arquivo já existe e sobrescrever=false: {file_path}")
-
-        screenshot = pyautogui.screenshot(region=region) if region else pyautogui.screenshot()
-        save_format = "JPEG" if image_format in {"jpg", "jpeg"} else image_format.upper()
-        screenshot.save(file_path, format=save_format)
-        self.log(f"Print salvo em: {file_path}", ConsoleTag.SUCCESS.value)
-
-    def _parse_screenshot_region(self, region_value: Any, context: StepContext) -> tuple[int, int, int, int] | None:
-        if region_value in (None, ""):
-            return None
-        if not isinstance(region_value, dict):
-            raise ValueError('Campo "printscreen.regiao" inválido. Use {"x": n, "y": n, "largura": n, "altura": n}.')
-
-        required_keys = ("x", "y", "largura", "altura")
-        missing = [key for key in required_keys if key not in region_value]
-        if missing:
-            raise ValueError(f"printscreen.regiao incompleto. Campos obrigatórios: {', '.join(required_keys)}.")
-
-        x = self._parse_xy_value(region_value.get("x"), context)
-        y = self._parse_xy_value(region_value.get("y"), context)
-        width = self._parse_xy_value(region_value.get("largura"), context)
-        height = self._parse_xy_value(region_value.get("altura"), context)
-        if width <= 0 or height <= 0:
-            raise ValueError("printscreen.regiao exige largura e altura maiores que zero.")
-        return (x, y, width, height)
-
-    def _resolve_filename_template(self, template: str, context: StepContext) -> str:
-        processed = self._replace_placeholders(template, context)
-
-        def replace_match(match: re.Match[str]) -> str:
-            reference = match.group(1).strip()
-            if not reference:
-                raise ValueError("Placeholder de nome_arquivo vazio. Use [TABELA.CAMPO] ou [CAMPO].")
-            return self._resolve_field_reference(reference, context)
-
-        resolved = re.sub(r"\[([^\[\]]+)\]", replace_match, processed)
-        sanitized = self._sanitize_file_name(resolved)
-        if not sanitized:
-            raise ValueError("O nome final do arquivo ficou vazio após sanitização.")
-        return sanitized
-
-    @staticmethod
-    def _sanitize_file_name(file_name: str) -> str:
-        cleaned = re.sub(r'[\/:*?"<>|]+', '_', str(file_name))
-        cleaned = re.sub(r'\s+', ' ', cleaned).strip().rstrip('.')
-        return cleaned
-
-    @staticmethod
-    def _extract_table_names_from_reference(reference: str) -> set[str]:
-        raw = str(reference).strip()
-        if "." not in raw:
-            return set()
-        table_name, _field = raw.split(".", 1)
-        table_name = table_name.strip()
-        return {table_name} if table_name else set()
-
-    def _extract_table_names_from_template(self, template: str) -> set[str]:
-        table_names: set[str] = set()
-        for match in re.finditer(r"\[([^\[\]]+)\]", str(template)):
-            table_names.update(self._extract_table_names_from_reference(match.group(1)))
-        return table_names
-
-    @staticmethod
-    def _template_uses_default_table(template: str) -> bool:
-        for match in re.finditer(r"\[([^\[\]]+)\]", str(template)):
-            if "." not in match.group(1).strip():
-                return True
-        return False
 
     def _clipboard_copy_with_retry(self, text: str, retries: int = 15, base_delay: float = 0.20) -> None:
         if pyperclip is None:
@@ -1104,16 +993,104 @@ class AutomationApp(tk.Tk):
         help_text = self._load_help_text()
         window = tk.Toplevel(self)
         window.title("Help - Comandos do Roteiro")
-        window.geometry("980x720")
-        text_widget = tk.Text(window, wrap="word")
-        text_widget.pack(fill="both", expand=True)
+        window.geometry("1040x760")
+        window.minsize(820, 560)
+        window.transient(self)
+
+        container = ttk.Frame(window, padding=12)
+        container.pack(fill="both", expand=True)
+        container.columnconfigure(0, weight=1)
+        container.rowconfigure(1, weight=1)
+
+        header = ttk.Frame(container)
+        header.grid(row=0, column=0, sticky="ew", pady=(0, 10))
+        header.columnconfigure(0, weight=1)
+
+        ttk.Label(header, text="Help do roteiro", font=("Segoe UI", 14, "bold")).grid(
+            row=0, column=0, sticky="w"
+        )
+        ttk.Label(
+            header,
+            text="Consulte os comandos, exemplos JSON e regras de preenchimento.",
+        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
+        ttk.Button(header, text="Fechar", command=window.destroy).grid(row=0, column=1, rowspan=2, padx=(12, 0))
+
+        text_frame = ttk.Frame(container)
+        text_frame.grid(row=1, column=0, sticky="nsew")
+        text_frame.columnconfigure(0, weight=1)
+        text_frame.rowconfigure(0, weight=1)
+
+        y_scroll = ttk.Scrollbar(text_frame, orient="vertical")
+        y_scroll.grid(row=0, column=1, sticky="ns")
+        x_scroll = ttk.Scrollbar(text_frame, orient="horizontal")
+        x_scroll.grid(row=1, column=0, sticky="ew")
+
+        text_widget = tk.Text(
+            text_frame,
+            wrap="none",
+            yscrollcommand=y_scroll.set,
+            xscrollcommand=x_scroll.set,
+            bg="#0f172a",
+            fg="#e2e8f0",
+            insertbackground="#f8fafc",
+            selectbackground="#334155",
+            padx=16,
+            pady=16,
+            relief="flat",
+            borderwidth=0,
+            font=("Consolas", 10),
+            spacing1=2,
+            spacing2=1,
+            spacing3=2,
+        )
+        text_widget.grid(row=0, column=0, sticky="nsew")
+
+        y_scroll.config(command=text_widget.yview)
+        x_scroll.config(command=text_widget.xview)
+
+        text_widget.tag_configure("title", font=("Segoe UI", 16, "bold"), foreground="#ffffff", spacing3=10)
+        text_widget.tag_configure("heading", font=("Segoe UI", 12, "bold"), foreground="#93c5fd", spacing1=8, spacing3=4)
+        text_widget.tag_configure("code", font=("Consolas", 10), foreground="#86efac")
+        text_widget.tag_configure("emphasis", foreground="#fde68a")
+
         text_widget.insert("1.0", help_text)
+        self._format_help_text(text_widget)
         text_widget.config(state="disabled")
+        text_widget.focus_set()
 
     def _load_help_text(self) -> str:
         if Paths.HELP_FILE.exists():
             return Paths.HELP_FILE.read_text(encoding="utf-8")
         return "Arquivo de help não encontrado. Verifique help_roteiro.txt."
+
+    def _format_help_text(self, text_widget: tk.Text) -> None:
+        content = text_widget.get("1.0", "end-1c")
+
+        first_line_end = content.find("\n")
+        if first_line_end == -1 and content.strip():
+            text_widget.tag_add("title", "1.0", "end-1c")
+        elif first_line_end > 0:
+            text_widget.tag_add("title", "1.0", f"1.0+{first_line_end}c")
+
+        for match in re.finditer(r"(?m)^#{1,6}\s+.+$", content):
+            start = f"1.0+{match.start()}c"
+            end = f"1.0+{match.end()}c"
+            text_widget.tag_add("heading", start, end)
+
+        for match in re.finditer(r"(?m)^(?:[A-ZÁÀÃÂÉÊÍÓÔÕÚÇ0-9 _\-/]{4,}|[-=]{4,})$", content):
+            start = f"1.0+{match.start()}c"
+            end = f"1.0+{match.end()}c"
+            text_widget.tag_add("heading", start, end)
+
+        for match in re.finditer(r"`[^`]+`", content):
+            start = f"1.0+{match.start()}c"
+            end = f"1.0+{match.end()}c"
+            text_widget.tag_add("code", start, end)
+
+        for match in re.finditer(r"\[[^\[\]\n]+\]", content):
+            start = f"1.0+{match.start()}c"
+            end = f"1.0+{match.end()}c"
+            text_widget.tag_add("emphasis", start, end)
 
     def open_table_editor(self) -> None:
         TableEditorWindow(self)
