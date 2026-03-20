@@ -1,0 +1,390 @@
+[
+  {
+    "info": "Roteiro para Criar View Cara Crachá em 2 telas"
+  },
+
+  {
+    "info": "tab",
+    "mouse": {"x": 900, "y": 25, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "url new tab",
+    "teclado": {"atalho":"ctrl+t"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "New View",
+    "teclado": {"digitar":"https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/SLT_ECC_R/-newGraphicalView"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "url text",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0.3}
+  },
+   {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgup"},
+    "esperar": {"depois": 0.2}
+  },
+
+  
+  {
+    "info": "tab",
+    "mouse": {"x": 2900, "y": 25, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "url new tab",
+    "teclado": {"atalho":"ctrl+t"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "New View",
+    "teclado": {"digitar":"https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/SLT_ECC_R/-newGraphicalView"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "url text",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0.3}
+  },  
+   {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgup"},
+    "esperar": {"depois": 5}
+  },
+
+
+
+ 
+  {
+    "info": "All",
+    "mouse": {"x": 135, "y": 522, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "Search",
+    "mouse": {"x": 200, "y": 480, "acao": "clicar_esquerdo"}
+  },
+  {
+    "info": "Cola Nome TABELA DATASPHERE",
+    "teclado": {"campo_tabela": "caracracha_1.TABELA_S4"}
+  },
+  {
+    "info": "Pesquisa",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "All",
+    "mouse": {"x": 2060, "y": 522, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.2}
+  },
+ {
+    "info": "Search",
+    "mouse": {"x": 2100, "y": 480, "acao": "clicar_esquerdo"}
+  },
+  {
+    "info": "Cola Nome TABELA DATASPHERE",
+    "teclado": {"campo_tabela": "caracracha_2.TABELA_S4"}
+  },
+  {
+    "info": "Pesquisa",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 1.5}
+  },
+
+
+
+
+
+
+  {
+    "info": "Arrasta tabela",
+    "mouse": {"x": 250, "y": 620, "acao": "clicar_segurar"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 700, "y": 700, "acao": "mover"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 750, "y": 750, "acao": "mover"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 701, "y": 701, "acao": "clicar_soltar"},
+    "esperar": {"depois": 1.5}
+  },
+  {
+    "info": "Arrasta tabela",
+    "mouse": {"x": 2150, "y": 620, "acao": "clicar_segurar"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 2600, "y": 700, "acao": "mover"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 2650, "y": 750, "acao": "mover"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Solta tabela",
+    "mouse": {"x": 2601, "y": 701, "acao": "clicar_soltar"},
+    "esperar": {"depois": 6}
+  },
+
+
+
+
+  {
+    "info": "Foco na Janela",
+    "mouse": {"x": 700, "y": 700, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Centraliza objetos",
+    "teclado": {"pressionar": "F8"},
+    "esperar": {"depois": 0.6}
+  },
+  {
+    "info": "Foco na Janela",
+    "mouse": {"x": 2600, "y": 700, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Centraliza objetos",
+    "teclado": {"pressionar": "F8"},
+    "esperar": {"depois": 0.3},
+    "repetir": 2
+  },
+
+
+
+{
+    "info": "Alterar nome da view",
+    "mouse": {"x": 1500, "y": 600, "acao": "clicar_duplo"},
+    "repetir": 2,
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "View Business name",
+    "teclado": {"campo_tabela": "caracracha_1.VIEW_DS"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Alterar nome da view",
+    "mouse": {"x": 3400, "y": 600, "acao": "clicar_duplo"},
+    "repetir": 2,
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "View Business name",
+    "teclado": {"campo_tabela": "caracracha_2.VIEW_DS"},
+    "esperar": {"depois": 0.3}
+  },
+
+
+
+
+  {
+    "info": "Clica na View",
+    "mouse": {"x": 1040, "y": 1240, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Criar campo calculado",
+    "mouse": {"x": 1170, "y": 1240, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Clica na View",
+    "mouse": {"x": 2940, "y": 1240, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Criar campo calculado",
+    "mouse": {"x": 3070, "y": 1240, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+
+
+
+
+  {
+    "info": "Adicionar campo calculado",
+    "mouse": {"x": 1780, "y": 640, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Calculated Column",
+    "mouse": {"x": 1720, "y": 680, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Adicionar campo calculado",
+    "mouse": {"x": 3680, "y": 640, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Calculated Column",
+    "mouse": {"x": 3620, "y": 680, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+
+
+
+
+
+
+  {
+    "info": "Business Name",
+    "mouse": {"x": 1420, "y": 645, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Business Name texto",
+    "teclado": {"digitar": "Clint"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Proximo Campo",
+    "teclado": {"pressionar": "tab"}
+  },
+  {
+    "info": "Technical Name texto",
+    "teclado": {"digitar": "MANDT"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Proximo Campo",
+    "teclado": {"pressionar": "tab"},
+    "repetir": 2
+  },
+  {
+    "info": "Length valor",
+    "teclado": {"digitar": "3"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Expression",
+    "mouse": {"x": 1500, "y": 1100, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Expression text",
+    "teclado": {"digitar": "'500'"},
+    "esperar": {"depois": 0.1}
+  },
+
+  {
+    "info": "Business Name",
+    "mouse": {"x": 3320, "y": 645, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Business Name texto",
+    "teclado": {"digitar": "Clint"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Proximo Campo",
+    "teclado": {"pressionar": "tab"}
+  },
+  {
+    "info": "Technical Name texto",
+    "teclado": {"digitar": "MANDT"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Proximo Campo",
+    "teclado": {"pressionar": "tab"},
+    "repetir": 2
+  },
+  {
+    "info": "Length valor",
+    "teclado": {"digitar": "3"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Expression",
+    "mouse": {"x": 3400, "y": 1100, "acao": "clicar_duplo"},
+    "esperar": {"depois": 0.1}
+  },
+  {
+    "info": "Expression text",
+    "teclado": {"digitar": "'500'"},
+    "esperar": {"depois": 0.1}
+  },
+
+
+
+  {
+    "info": "Deploy",
+    "mouse": {"x": 250, "y": 310, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgup"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "close tab",
+    "teclado": {"atalho":"ctrl+w"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "confirm close",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0.2}
+  },
+
+
+
+  {
+    "info": "Deploy",
+    "mouse": {"x": 2160, "y": 310, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.5}
+  },
+  {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgup"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "close tab",
+    "teclado": {"atalho":"ctrl+w"},
+    "esperar": {"depois": 0.2}
+  },
+  {
+    "info": "confirm Close",
+    "teclado": {"pressionar":"enter"},
+    "esperar": {"depois": 0.2}
+  },
+
+
+
+  {
+    "info": "Salvar",
+    "mouse": {"x": 1260, "y": 1622, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  
+  {
+    "info": "Salvar",
+    "mouse": {"x": 3160, "y": 1622, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 2}
+  }
+  
+
+  
+]
