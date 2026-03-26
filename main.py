@@ -760,7 +760,8 @@ class AutomationApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Roterize")
-        self.geometry("1240x800")
+        self.geometry("1240x820")
+        self.minsize(1120, 760)
 
         self.script_name_var = tk.StringVar()
         self.selected_script_var = tk.StringVar()
@@ -789,60 +790,58 @@ class AutomationApp(tk.Tk):
         self.after(100, self.update_mouse_position)
 
     def _build_ui(self) -> None:
-        top = ttk.Frame(self, padding=10)
-        top.pack(fill="x")
+        root = ttk.Frame(self, padding=10)
+        root.pack(fill="both", expand=True)
+        root.columnconfigure(0, weight=1)
+        root.rowconfigure(1, weight=1)
 
-        ttk.Label(top, text="Roteiro salvo:").grid(row=0, column=0, sticky="w", padx=4, pady=4)
-        self.script_combo = ttk.Combobox(top, textvariable=self.selected_script_var, state="readonly", width=30)
-        self.script_combo.grid(row=0, column=1, sticky="we", padx=4, pady=4)
-        ttk.Button(top, text="Carregar", command=self.load_selected_script).grid(row=0, column=2, padx=4, pady=4)
-        ttk.Button(top, text="Salvar como roteiro", command=self.save_script_from_main).grid(row=0, column=3, padx=4, pady=4)
-        ttk.Button(top, text="CRUD Roteiros", command=self.open_script_editor).grid(row=0, column=4, padx=4, pady=4)
-        ttk.Button(top, text="CRUD Tabelas", command=self.open_table_editor).grid(row=0, column=5, padx=4, pady=4)
-        ttk.Button(top, text="Help", command=self.open_help).grid(row=0, column=6, padx=4, pady=4)
+        top = ttk.Frame(root)
+        top.grid(row=0, column=0, sticky="ew")
+        top.columnconfigure(1, weight=1)
+        top.columnconfigure(5, weight=1)
 
-        ttk.Label(top, text="Nome do roteiro atual:").grid(row=1, column=0, sticky="w", padx=4, pady=4)
-        ttk.Entry(top, textvariable=self.script_name_var, width=32).grid(row=1, column=1, sticky="we", padx=4, pady=4)
+        ttk.Label(top, text="Roteiro salvo:").grid(row=0, column=0, sticky="w", padx=(0, 6), pady=4)
+        self.script_combo = ttk.Combobox(top, textvariable=self.selected_script_var, state="readonly", width=70)
+        self.script_combo.grid(row=0, column=1, sticky="ew", padx=(0, 6), pady=4)
+        ttk.Button(top, text="Carregar", command=self.load_selected_script).grid(row=0, column=2, padx=(0, 6), pady=4)
+        ttk.Button(top, text="Help", command=self.open_help).grid(row=0, column=3, padx=(0, 6), pady=4)
 
-        ttk.Label(top, text="Tabela:").grid(row=1, column=2, sticky="e", padx=4, pady=4)
-        self.table_combo = ttk.Combobox(top, textvariable=self.selected_table_var, state="readonly", width=28)
-        self.table_combo.grid(row=1, column=3, sticky="we", padx=4, pady=4)
+        ttk.Label(top, text="Nome do roteiro atual:").grid(row=1, column=0, sticky="w", padx=(0, 6), pady=4)
+        ttk.Entry(top, textvariable=self.script_name_var, width=70).grid(row=1, column=1, sticky="ew", padx=(0, 6), pady=4)
+        ttk.Button(top, text="Salvar como roteiro", command=self.save_script_from_main).grid(row=1, column=2, padx=(0, 6), pady=4)
+        ttk.Button(top, text="CRUD Roteiros", command=self.open_script_editor).grid(row=1, column=3, padx=(0, 6), pady=4)
+        ttk.Button(top, text="CRUD Tabelas", command=self.open_table_editor).grid(row=1, column=4, padx=(0, 6), pady=4)
 
-        ttk.Label(top, text="Delay inicial (s):").grid(row=1, column=4, sticky="e", padx=4, pady=4)
-        ttk.Entry(top, textvariable=self.start_delay_var, width=10).grid(row=1, column=5, sticky="w", padx=4, pady=4)
+        ttk.Label(top, text="Tabela:").grid(row=2, column=0, sticky="w", padx=(0, 6), pady=4)
+        self.table_combo = ttk.Combobox(top, textvariable=self.selected_table_var, state="readonly", width=70)
+        self.table_combo.grid(row=2, column=1, sticky="w", padx=(0, 12), pady=4)
 
-        ttk.Label(top, text="Delay entre passos (s):").grid(row=1, column=6, sticky="e", padx=4, pady=4)
-        ttk.Entry(top, textvariable=self.delay_var, width=10).grid(row=1, column=7, sticky="w", padx=4, pady=4)
+        ttk.Label(top, text="Delay inicial (s):").grid(row=2, column=2, sticky="e", padx=(0, 6), pady=4)
+        ttk.Entry(top, textvariable=self.start_delay_var, width=8).grid(row=2, column=3, sticky="w", padx=(0, 12), pady=4)
 
-        ttk.Label(top, text="Repetições:").grid(row=1, column=8, sticky="e", padx=4, pady=4)
-        ttk.Entry(top, textvariable=self.repetitions_var, width=10).grid(row=1, column=9, sticky="w", padx=4, pady=4)
+        ttk.Label(top, text="Delay entre passos (s):").grid(row=2, column=4, sticky="e", padx=(0, 6), pady=4)
+        ttk.Entry(top, textvariable=self.delay_var, width=8).grid(row=2, column=5, sticky="w", padx=(0, 12), pady=4)
 
-        ttk.Label(top, textvariable=self.mouse_position_var).grid(row=2, column=0, columnspan=10, sticky="w", padx=4, pady=(2, 4))
+        ttk.Label(top, text="Repetições:").grid(row=2, column=6, sticky="e", padx=(0, 6), pady=4)
+        ttk.Entry(top, textvariable=self.repetitions_var, width=8).grid(row=2, column=7, sticky="w", padx=(0, 12), pady=4)
 
-        for column in range(10):
-            top.columnconfigure(column, weight=1)
+        ttk.Label(top, textvariable=self.mouse_position_var).grid(row=2, column=8, sticky="e", padx=(8, 0), pady=4)
 
-        center = ttk.Panedwindow(self, orient="vertical")
-        center.pack(fill="both", expand=True, padx=10, pady=(0, 10))
+        center = ttk.Panedwindow(root, orient="vertical")
+        center.grid(row=1, column=0, sticky="nsew", pady=(8, 10))
 
         script_frame = ttk.Labelframe(center, text="Roteiro para execução")
         console_frame = ttk.Labelframe(center, text="Console")
-        center.add(script_frame, weight=3)
+        center.add(script_frame, weight=5)
         center.add(console_frame, weight=2)
 
         self._build_script_editor(script_frame)
-
-        controls = ttk.Frame(self, padding=(10, 0, 10, 10))
-        controls.pack(fill="x")
-        ttk.Button(controls, text="Executar", command=self.start_execution).pack(side="left", padx=4)
-        ttk.Button(controls, text="Parar", command=self.stop_execution).pack(side="left", padx=4)
-        ttk.Button(controls, text="Limpar console", command=self.clear_console).pack(side="left", padx=4)
 
         self.console_text = tk.Text(
             console_frame,
             wrap="word",
             state="disabled",
-            height=12,
+            height=8,
             bg="#111827",
             fg="#e5e7eb",
             insertbackground="#ffffff",
@@ -852,6 +851,12 @@ class AutomationApp(tk.Tk):
         )
         self.console_text.pack(fill="both", expand=True, padx=6, pady=6)
         self._configure_console_tags()
+
+        controls = ttk.Frame(root)
+        controls.grid(row=2, column=0, sticky="ew")
+        ttk.Button(controls, text="Executar", command=self.start_execution).pack(side="left", padx=(0, 8))
+        ttk.Button(controls, text="Parar", command=self.stop_execution).pack(side="left", padx=(0, 8))
+        ttk.Button(controls, text="Limpar console", command=self.clear_console).pack(side="left")
 
     def _build_script_editor(self, script_frame: ttk.Labelframe) -> None:
         script_container = ttk.Frame(script_frame)
@@ -993,104 +998,16 @@ class AutomationApp(tk.Tk):
         help_text = self._load_help_text()
         window = tk.Toplevel(self)
         window.title("Help - Comandos do Roteiro")
-        window.geometry("1040x760")
-        window.minsize(820, 560)
-        window.transient(self)
-
-        container = ttk.Frame(window, padding=12)
-        container.pack(fill="both", expand=True)
-        container.columnconfigure(0, weight=1)
-        container.rowconfigure(1, weight=1)
-
-        header = ttk.Frame(container)
-        header.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        header.columnconfigure(0, weight=1)
-
-        ttk.Label(header, text="Help do roteiro", font=("Segoe UI", 14, "bold")).grid(
-            row=0, column=0, sticky="w"
-        )
-        ttk.Label(
-            header,
-            text="Consulte os comandos, exemplos JSON e regras de preenchimento.",
-        ).grid(row=1, column=0, sticky="w", pady=(2, 0))
-        ttk.Button(header, text="Fechar", command=window.destroy).grid(row=0, column=1, rowspan=2, padx=(12, 0))
-
-        text_frame = ttk.Frame(container)
-        text_frame.grid(row=1, column=0, sticky="nsew")
-        text_frame.columnconfigure(0, weight=1)
-        text_frame.rowconfigure(0, weight=1)
-
-        y_scroll = ttk.Scrollbar(text_frame, orient="vertical")
-        y_scroll.grid(row=0, column=1, sticky="ns")
-        x_scroll = ttk.Scrollbar(text_frame, orient="horizontal")
-        x_scroll.grid(row=1, column=0, sticky="ew")
-
-        text_widget = tk.Text(
-            text_frame,
-            wrap="none",
-            yscrollcommand=y_scroll.set,
-            xscrollcommand=x_scroll.set,
-            bg="#0f172a",
-            fg="#e2e8f0",
-            insertbackground="#f8fafc",
-            selectbackground="#334155",
-            padx=16,
-            pady=16,
-            relief="flat",
-            borderwidth=0,
-            font=("Consolas", 10),
-            spacing1=2,
-            spacing2=1,
-            spacing3=2,
-        )
-        text_widget.grid(row=0, column=0, sticky="nsew")
-
-        y_scroll.config(command=text_widget.yview)
-        x_scroll.config(command=text_widget.xview)
-
-        text_widget.tag_configure("title", font=("Segoe UI", 16, "bold"), foreground="#ffffff", spacing3=10)
-        text_widget.tag_configure("heading", font=("Segoe UI", 12, "bold"), foreground="#93c5fd", spacing1=8, spacing3=4)
-        text_widget.tag_configure("code", font=("Consolas", 10), foreground="#86efac")
-        text_widget.tag_configure("emphasis", foreground="#fde68a")
-
+        window.geometry("980x720")
+        text_widget = tk.Text(window, wrap="word")
+        text_widget.pack(fill="both", expand=True)
         text_widget.insert("1.0", help_text)
-        self._format_help_text(text_widget)
         text_widget.config(state="disabled")
-        text_widget.focus_set()
 
     def _load_help_text(self) -> str:
         if Paths.HELP_FILE.exists():
             return Paths.HELP_FILE.read_text(encoding="utf-8")
         return "Arquivo de help não encontrado. Verifique help_roteiro.txt."
-
-    def _format_help_text(self, text_widget: tk.Text) -> None:
-        content = text_widget.get("1.0", "end-1c")
-
-        first_line_end = content.find("\n")
-        if first_line_end == -1 and content.strip():
-            text_widget.tag_add("title", "1.0", "end-1c")
-        elif first_line_end > 0:
-            text_widget.tag_add("title", "1.0", f"1.0+{first_line_end}c")
-
-        for match in re.finditer(r"(?m)^#{1,6}\s+.+$", content):
-            start = f"1.0+{match.start()}c"
-            end = f"1.0+{match.end()}c"
-            text_widget.tag_add("heading", start, end)
-
-        for match in re.finditer(r"(?m)^(?:[A-ZÁÀÃÂÉÊÍÓÔÕÚÇ0-9 _\-/]{4,}|[-=]{4,})$", content):
-            start = f"1.0+{match.start()}c"
-            end = f"1.0+{match.end()}c"
-            text_widget.tag_add("heading", start, end)
-
-        for match in re.finditer(r"`[^`]+`", content):
-            start = f"1.0+{match.start()}c"
-            end = f"1.0+{match.end()}c"
-            text_widget.tag_add("code", start, end)
-
-        for match in re.finditer(r"\[[^\[\]\n]+\]", content):
-            start = f"1.0+{match.start()}c"
-            end = f"1.0+{match.end()}c"
-            text_widget.tag_add("emphasis", start, end)
 
     def open_table_editor(self) -> None:
         TableEditorWindow(self)
