@@ -1,5 +1,4 @@
 [
-
   {
     "info": "Roteiro para Printar CDS View no Eclipse"
   },
@@ -18,7 +17,7 @@
   {
     "info": "Cola nome CDSView",
     "teclado": {"campo_tabela": "1515_tabelas.CDS_VIEW"},
-    "esperar": {"depois": 1}
+    "esperar": {"depois": 2.5}
   },
   {
     "info": "Localizar",
