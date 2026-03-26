@@ -1,0 +1,97 @@
+[
+
+  {
+    "info": "Roteiro para Printar CDS View no Eclipse"
+  },
+
+
+  {
+    "info": "Foco no eclipse",
+    "mouse": {"x": 1000, "y": 900, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Abrir CDS View",
+    "teclado": {"atalho":"ctrl+shift+a"},
+    "esperar": {"depois": 0.5}
+  },
+  {
+    "info": "Cola nome CDSView",
+    "teclado": {"campo_tabela": "1515_tabelas.CDS_VIEW"},
+    "esperar": {"depois": 1}
+  },
+  {
+    "info": "Localizar",
+    "teclado": {"pressionar": "enter"},
+    "esperar": {"depois": 0.3},
+    "repetir": 2
+  },
+
+
+
+{
+  "info": "Print Estrutura CDS View",
+  "printscreen": {
+    "pasta": "C:/prints",
+    "nome_arquivo": "PRINT_CDS_VIEW_ESTRUTURA_[1515_tabelas.TABELA]",
+    "regiao": {
+      "x": 9,
+      "y": 180,
+      "largura": 1900,
+      "altura": 1900
+    },
+    "formato": "png",
+    "sobrescrever": true
+    },
+  "esperar": {"antes": 4, "depois": 0.3}
+},
+
+
+  {
+    "info": "Menu de opcoes",
+    "mouse": {"x": 1000, "y": 500, "acao": "clicar_direito"},
+    "esperar": {"depois": 0.3}
+  },
+  {
+    "info": "Open With",
+    "mouse": {"x": 1250, "y": 835, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.2}
+  },
+{
+    "info": "Data Preview",
+    "mouse": {"x": 1650, "y": 835, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.2}
+  },
+
+
+
+{
+  "info": "Print Preview CDS View",
+  "printscreen": {
+    "pasta": "C:/prints",
+    "nome_arquivo": "PRINT_CDS_VIEW_PREVIEW_[1515_tabelas.TABELA]",
+    "regiao": {
+      "x": 9,
+      "y": 180,
+      "largura": 1900,
+      "altura": 1900
+    },
+    "formato": "png",
+    "sobrescrever": true
+    },
+  "esperar": {"antes": 4, "depois": 0.3}
+},
+
+
+  {
+    "info": "Preparando para fechar janelas",
+    "mouse": {"x": 1000, "y": 285, "acao": "clicar_direito"},
+    "esperar": {"depois": 0.3}
+  },
+ {
+    "info": "Fechar todas",
+    "mouse": {"x": 1150, "y": 415, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0.3}
+  }
+
+]

@@ -1,4 +1,3 @@
-
 from __future__ import annotations
 
 import csv
@@ -281,6 +280,8 @@ class ScriptRunner:
                 self._execute_mouse(action_payload, context)
             elif action_kind == "teclado":
                 self._execute_keyboard(action_payload, context)
+            elif action_kind == "printscreen":
+                self._execute_printscreen(action_payload, context)
 
             if after_wait > 0:
                 time.sleep(after_wait)
@@ -288,13 +289,17 @@ class ScriptRunner:
     def _get_action_payload(self, step: dict[str, Any]) -> tuple[str | None, dict[str, Any] | None]:
         has_mouse = isinstance(step.get("mouse"), dict) and bool(step.get("mouse"))
         has_keyboard = isinstance(step.get("teclado"), dict) and bool(step.get("teclado"))
+        has_printscreen = isinstance(step.get("printscreen"), dict) and bool(step.get("printscreen"))
 
-        if has_mouse and has_keyboard:
-            raise ValueError("Cada item pode ter somente 1 ação principal: mouse OU teclado.")
+        action_count = sum(bool(item) for item in (has_mouse, has_keyboard, has_printscreen))
+        if action_count > 1:
+            raise ValueError("Cada item pode ter somente 1 ação principal: mouse, teclado OU printscreen.")
         if has_mouse:
             return "mouse", step["mouse"]
         if has_keyboard:
             return "teclado", step["teclado"]
+        if has_printscreen:
+            return "printscreen", step["printscreen"]
         return None, None
 
     def _build_step_summary(
@@ -316,6 +321,10 @@ class ScriptRunner:
         elif action_kind == "teclado" and action_payload:
             key, value = next(iter(action_payload.items()))
             parts.append(f"TECLADO={key}:{value}")
+        elif action_kind == "printscreen" and action_payload:
+            parts.append(
+                f"PRINTSCREEN=nome:{action_payload.get('nome_arquivo')}, pasta:{action_payload.get('pasta')}, formato:{action_payload.get('formato', 'png')}"
+            )
         if repeat_count > 1:
             parts.append(f"REPETIR={repeat_count}")
         if after_wait > 0:
@@ -326,16 +335,16 @@ class ScriptRunner:
         table_names: set[str] = set()
         for step in steps:
             keyboard = step.get("teclado")
-            if not isinstance(keyboard, dict):
-                continue
-            reference = keyboard.get("campo_tabela")
-            if not reference:
-                continue
-            raw = str(reference).strip()
-            if "." not in raw:
-                continue
-            table_name, _field = raw.split(".", 1)
-            table_names.add(table_name.strip())
+            if isinstance(keyboard, dict):
+                reference = keyboard.get("campo_tabela")
+                if reference:
+                    table_names.update(self._extract_table_names_from_reference(str(reference)))
+
+            printscreen = step.get("printscreen")
+            if isinstance(printscreen, dict):
+                template = printscreen.get("nome_arquivo")
+                if template:
+                    table_names.update(self._extract_table_names_from_template(str(template)))
         return table_names
 
     def _has_rows_available(
@@ -353,17 +362,25 @@ class ScriptRunner:
         table_names: set[str] = set()
         for step in steps:
             keyboard = step.get("teclado")
-            if not isinstance(keyboard, dict):
-                continue
-            reference = keyboard.get("campo_tabela")
-            if not reference:
-                continue
-            raw = str(reference).strip()
-            if "." in raw:
-                table_name, _field = raw.split(".", 1)
-                table_names.add(table_name.strip())
-            elif default_table is not None:
-                table_names.add(default_table.name)
+            if isinstance(keyboard, dict):
+                reference = keyboard.get("campo_tabela")
+                if reference:
+                    raw = str(reference).strip()
+                    if "." in raw:
+                        table_name, _field = raw.split(".", 1)
+                        table_names.add(table_name.strip())
+                    elif default_table is not None:
+                        table_names.add(default_table.name)
+
+            printscreen = step.get("printscreen")
+            if isinstance(printscreen, dict):
+                template = printscreen.get("nome_arquivo")
+                if template:
+                    explicit_tables = self._extract_table_names_from_template(str(template))
+                    if explicit_tables:
+                        table_names.update(explicit_tables)
+                    elif self._template_uses_default_table(str(template)) and default_table is not None:
+                        table_names.add(default_table.name)
         return table_names
 
     def _parse_wait(self, wait_value: Any) -> tuple[float, float]:
@@ -436,6 +453,100 @@ class ScriptRunner:
             raise ValueError(
                 f"Subitem de teclado inválido: {action}. Use digitar, atalho, pressionar, campo_tabela ou funcao_py."
             )
+
+    def _execute_printscreen(self, payload: dict[str, Any], context: StepContext) -> None:
+        if not isinstance(payload, dict) or not payload:
+            raise ValueError("O objeto printscreen deve ser um dicionário válido.")
+
+        output_folder = str(payload.get("pasta") or "").strip()
+        if not output_folder:
+            raise ValueError("printscreen.pasta é obrigatório.")
+
+        name_template = str(payload.get("nome_arquivo") or "").strip()
+        if not name_template:
+            raise ValueError("printscreen.nome_arquivo é obrigatório.")
+
+        image_format = str(payload.get("formato") or "png").strip().lower()
+        if image_format not in {"png", "jpg", "jpeg", "bmp"}:
+            raise ValueError("printscreen.formato inválido. Use png, jpg, jpeg ou bmp.")
+
+        overwrite = bool(payload.get("sobrescrever", False))
+        region = self._parse_screenshot_region(payload.get("regiao"), context)
+        file_name = self._resolve_filename_template(name_template, context)
+
+        folder_path = Path(output_folder)
+        folder_path.mkdir(parents=True, exist_ok=True)
+
+        file_path = folder_path / f"{file_name}.{image_format}"
+        if file_path.exists() and not overwrite:
+            raise FileExistsError(f"Arquivo já existe e sobrescrever=false: {file_path}")
+
+        screenshot = pyautogui.screenshot(region=region) if region else pyautogui.screenshot()
+        save_format = "JPEG" if image_format in {"jpg", "jpeg"} else image_format.upper()
+        screenshot.save(file_path, format=save_format)
+        self.log(f"Print salvo em: {file_path}", ConsoleTag.SUCCESS.value)
+
+    def _parse_screenshot_region(self, region_value: Any, context: StepContext) -> tuple[int, int, int, int] | None:
+        if region_value in (None, ""):
+            return None
+        if not isinstance(region_value, dict):
+            raise ValueError('Campo "printscreen.regiao" inválido. Use {"x": n, "y": n, "largura": n, "altura": n}.')
+
+        required_keys = ("x", "y", "largura", "altura")
+        missing = [key for key in required_keys if key not in region_value]
+        if missing:
+            raise ValueError(f"printscreen.regiao incompleto. Campos obrigatórios: {', '.join(required_keys)}.")
+
+        x = self._parse_xy_value(region_value.get("x"), context)
+        y = self._parse_xy_value(region_value.get("y"), context)
+        width = self._parse_xy_value(region_value.get("largura"), context)
+        height = self._parse_xy_value(region_value.get("altura"), context)
+        if width <= 0 or height <= 0:
+            raise ValueError("printscreen.regiao exige largura e altura maiores que zero.")
+        return (x, y, width, height)
+
+    def _resolve_filename_template(self, template: str, context: StepContext) -> str:
+        processed = self._replace_placeholders(template, context)
+
+        def replace_match(match: re.Match[str]) -> str:
+            reference = match.group(1).strip()
+            if not reference:
+                raise ValueError("Placeholder de nome_arquivo vazio. Use [TABELA.CAMPO] ou [CAMPO].")
+            return self._resolve_field_reference(reference, context)
+
+        resolved = re.sub(r"\[([^\[\]]+)\]", replace_match, processed)
+        sanitized = self._sanitize_file_name(resolved)
+        if not sanitized:
+            raise ValueError("O nome final do arquivo ficou vazio após sanitização.")
+        return sanitized
+
+    @staticmethod
+    def _sanitize_file_name(file_name: str) -> str:
+        cleaned = re.sub(r'[\/:*?"<>|]+', '_', str(file_name))
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip().rstrip('.')
+        return cleaned
+
+    @staticmethod
+    def _extract_table_names_from_reference(reference: str) -> set[str]:
+        raw = str(reference).strip()
+        if "." not in raw:
+            return set()
+        table_name, _field = raw.split(".", 1)
+        table_name = table_name.strip()
+        return {table_name} if table_name else set()
+
+    def _extract_table_names_from_template(self, template: str) -> set[str]:
+        table_names: set[str] = set()
+        for match in re.finditer(r"\[([^\[\]]+)\]", str(template)):
+            table_names.update(self._extract_table_names_from_reference(match.group(1)))
+        return table_names
+
+    @staticmethod
+    def _template_uses_default_table(template: str) -> bool:
+        for match in re.finditer(r"\[([^\[\]]+)\]", str(template)):
+            if "." not in match.group(1).strip():
+                return True
+        return False
 
     def _clipboard_copy_with_retry(self, text: str, retries: int = 15, base_delay: float = 0.20) -> None:
         if pyperclip is None:
@@ -760,8 +871,7 @@ class AutomationApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Roterize")
-        self.geometry("1240x820")
-        self.minsize(1120, 760)
+        self.geometry("1240x800")
 
         self.script_name_var = tk.StringVar()
         self.selected_script_var = tk.StringVar()
@@ -790,58 +900,60 @@ class AutomationApp(tk.Tk):
         self.after(100, self.update_mouse_position)
 
     def _build_ui(self) -> None:
-        root = ttk.Frame(self, padding=10)
-        root.pack(fill="both", expand=True)
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(1, weight=1)
+        top = ttk.Frame(self, padding=10)
+        top.pack(fill="x")
 
-        top = ttk.Frame(root)
-        top.grid(row=0, column=0, sticky="ew")
-        top.columnconfigure(1, weight=1)
-        top.columnconfigure(5, weight=1)
+        ttk.Label(top, text="Roteiro salvo:").grid(row=0, column=0, sticky="w", padx=4, pady=4)
+        self.script_combo = ttk.Combobox(top, textvariable=self.selected_script_var, state="readonly", width=30)
+        self.script_combo.grid(row=0, column=1, sticky="we", padx=4, pady=4)
+        ttk.Button(top, text="Carregar", command=self.load_selected_script).grid(row=0, column=2, padx=4, pady=4)
+        ttk.Button(top, text="Salvar como roteiro", command=self.save_script_from_main).grid(row=0, column=3, padx=4, pady=4)
+        ttk.Button(top, text="CRUD Roteiros", command=self.open_script_editor).grid(row=0, column=4, padx=4, pady=4)
+        ttk.Button(top, text="CRUD Tabelas", command=self.open_table_editor).grid(row=0, column=5, padx=4, pady=4)
+        ttk.Button(top, text="Help", command=self.open_help).grid(row=0, column=6, padx=4, pady=4)
 
-        ttk.Label(top, text="Roteiro salvo:").grid(row=0, column=0, sticky="w", padx=(0, 6), pady=4)
-        self.script_combo = ttk.Combobox(top, textvariable=self.selected_script_var, state="readonly", width=70)
-        self.script_combo.grid(row=0, column=1, sticky="ew", padx=(0, 6), pady=4)
-        ttk.Button(top, text="Carregar", command=self.load_selected_script).grid(row=0, column=2, padx=(0, 6), pady=4)
-        ttk.Button(top, text="Help", command=self.open_help).grid(row=0, column=3, padx=(0, 6), pady=4)
+        ttk.Label(top, text="Nome do roteiro atual:").grid(row=1, column=0, sticky="w", padx=4, pady=4)
+        ttk.Entry(top, textvariable=self.script_name_var, width=32).grid(row=1, column=1, sticky="we", padx=4, pady=4)
 
-        ttk.Label(top, text="Nome do roteiro atual:").grid(row=1, column=0, sticky="w", padx=(0, 6), pady=4)
-        ttk.Entry(top, textvariable=self.script_name_var, width=70).grid(row=1, column=1, sticky="ew", padx=(0, 6), pady=4)
-        ttk.Button(top, text="Salvar como roteiro", command=self.save_script_from_main).grid(row=1, column=2, padx=(0, 6), pady=4)
-        ttk.Button(top, text="CRUD Roteiros", command=self.open_script_editor).grid(row=1, column=3, padx=(0, 6), pady=4)
-        ttk.Button(top, text="CRUD Tabelas", command=self.open_table_editor).grid(row=1, column=4, padx=(0, 6), pady=4)
+        ttk.Label(top, text="Tabela:").grid(row=1, column=2, sticky="e", padx=4, pady=4)
+        self.table_combo = ttk.Combobox(top, textvariable=self.selected_table_var, state="readonly", width=28)
+        self.table_combo.grid(row=1, column=3, sticky="we", padx=4, pady=4)
 
-        ttk.Label(top, text="Tabela:").grid(row=2, column=0, sticky="w", padx=(0, 6), pady=4)
-        self.table_combo = ttk.Combobox(top, textvariable=self.selected_table_var, state="readonly", width=70)
-        self.table_combo.grid(row=2, column=1, sticky="w", padx=(0, 12), pady=4)
+        ttk.Label(top, text="Delay inicial (s):").grid(row=1, column=4, sticky="e", padx=4, pady=4)
+        ttk.Entry(top, textvariable=self.start_delay_var, width=10).grid(row=1, column=5, sticky="w", padx=4, pady=4)
 
-        ttk.Label(top, text="Delay inicial (s):").grid(row=2, column=2, sticky="e", padx=(0, 6), pady=4)
-        ttk.Entry(top, textvariable=self.start_delay_var, width=8).grid(row=2, column=3, sticky="w", padx=(0, 12), pady=4)
+        ttk.Label(top, text="Delay entre passos (s):").grid(row=1, column=6, sticky="e", padx=4, pady=4)
+        ttk.Entry(top, textvariable=self.delay_var, width=10).grid(row=1, column=7, sticky="w", padx=4, pady=4)
 
-        ttk.Label(top, text="Delay entre passos (s):").grid(row=2, column=4, sticky="e", padx=(0, 6), pady=4)
-        ttk.Entry(top, textvariable=self.delay_var, width=8).grid(row=2, column=5, sticky="w", padx=(0, 12), pady=4)
+        ttk.Label(top, text="Repetições:").grid(row=1, column=8, sticky="e", padx=4, pady=4)
+        ttk.Entry(top, textvariable=self.repetitions_var, width=10).grid(row=1, column=9, sticky="w", padx=4, pady=4)
 
-        ttk.Label(top, text="Repetições:").grid(row=2, column=6, sticky="e", padx=(0, 6), pady=4)
-        ttk.Entry(top, textvariable=self.repetitions_var, width=8).grid(row=2, column=7, sticky="w", padx=(0, 12), pady=4)
+        ttk.Label(top, textvariable=self.mouse_position_var).grid(row=2, column=0, columnspan=10, sticky="w", padx=4, pady=(2, 4))
 
-        ttk.Label(top, textvariable=self.mouse_position_var).grid(row=2, column=8, sticky="e", padx=(8, 0), pady=4)
+        for column in range(10):
+            top.columnconfigure(column, weight=1)
 
-        center = ttk.Panedwindow(root, orient="vertical")
-        center.grid(row=1, column=0, sticky="nsew", pady=(8, 10))
+        center = ttk.Panedwindow(self, orient="vertical")
+        center.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
         script_frame = ttk.Labelframe(center, text="Roteiro para execução")
         console_frame = ttk.Labelframe(center, text="Console")
-        center.add(script_frame, weight=5)
+        center.add(script_frame, weight=3)
         center.add(console_frame, weight=2)
 
         self._build_script_editor(script_frame)
+
+        controls = ttk.Frame(self, padding=(10, 0, 10, 10))
+        controls.pack(fill="x")
+        ttk.Button(controls, text="Executar", command=self.start_execution).pack(side="left", padx=4)
+        ttk.Button(controls, text="Parar", command=self.stop_execution).pack(side="left", padx=4)
+        ttk.Button(controls, text="Limpar console", command=self.clear_console).pack(side="left", padx=4)
 
         self.console_text = tk.Text(
             console_frame,
             wrap="word",
             state="disabled",
-            height=8,
+            height=12,
             bg="#111827",
             fg="#e5e7eb",
             insertbackground="#ffffff",
@@ -851,12 +963,6 @@ class AutomationApp(tk.Tk):
         )
         self.console_text.pack(fill="both", expand=True, padx=6, pady=6)
         self._configure_console_tags()
-
-        controls = ttk.Frame(root)
-        controls.grid(row=2, column=0, sticky="ew")
-        ttk.Button(controls, text="Executar", command=self.start_execution).pack(side="left", padx=(0, 8))
-        ttk.Button(controls, text="Parar", command=self.stop_execution).pack(side="left", padx=(0, 8))
-        ttk.Button(controls, text="Limpar console", command=self.clear_console).pack(side="left")
 
     def _build_script_editor(self, script_frame: ttk.Labelframe) -> None:
         script_container = ttk.Frame(script_frame)

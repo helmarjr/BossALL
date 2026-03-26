@@ -3,12 +3,12 @@
   "info": "Salvar print",
   "printscreen": {
     "pasta": "C:/prints",
-    "nome_arquivo": "Documento [caracracha_1.VIEW_DS]",
+    "nome_arquivo": "PRINT_CDS_VIEW_[prints.TABELA]",
     "regiao": {
-      "x": 500,
-      "y": 500,
-      "largura": 400,
-      "altura": 400
+      "x": 9,
+      "y": 180,
+      "largura": 1900,
+      "altura": 1900
     },
     "formato": "png",
     "sobrescrever": false
