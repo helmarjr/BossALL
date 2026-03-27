@@ -76,6 +76,7 @@ class ConsoleTag(str, Enum):
     STEP = "step"
     ITERATION = "iteration"
     ELAPSED = "elapsed"
+    SECTION = "section"
 
 
 @dataclass
@@ -84,6 +85,7 @@ class StepContext:
     table_contexts: dict[str, "TableCursor"]
     default_table: "TableCursor | None"
     acquired_tables: set[str]
+    execution_count: int = 0
 
 
 @dataclass
@@ -172,7 +174,7 @@ class ScriptRunner:
         self.get_delay = get_delay
         self.get_start_delay = get_start_delay
 
-    def run(self, steps: list[dict[str, Any]], repetitions: int, selected_table: str | None) -> None:
+    def run(self, steps: list[dict[str, Any]], repetitions: int, selected_table: str | None, execution_count: int = 0) -> None:
         table_contexts: dict[str, TableCursor] = {}
         default_table = self._load_default_table(selected_table, table_contexts)
         self._load_explicit_tables(steps, table_contexts)
@@ -189,7 +191,7 @@ class ScriptRunner:
                 self.log("Sem registros pendentes suficientes para continuar. Execução finalizada.", ConsoleTag.WARNING.value)
                 return
 
-            self._run_iteration(steps, iteration_index, repetitions, table_contexts, default_table)
+            self._run_iteration(steps, iteration_index, repetitions, table_contexts, default_table, execution_count)
 
         self.log("Execução concluída.", ConsoleTag.SUCCESS.value)
 
@@ -234,10 +236,11 @@ class ScriptRunner:
         repetitions: int,
         table_contexts: dict[str, TableCursor],
         default_table: TableCursor | None,
+        execution_count: int = 0,
     ) -> None:
         iteration_start = time.perf_counter()
         acquired_tables: set[str] = set()
-        context = StepContext(iteration_index, table_contexts, default_table, acquired_tables)
+        context = StepContext(iteration_index, table_contexts, default_table, acquired_tables, execution_count)
 
         self.log(f"--- Iteração {iteration_index + 1}/{repetitions} ---", ConsoleTag.ITERATION.value)
         try:
@@ -273,9 +276,14 @@ class ScriptRunner:
             table_contexts[table_name].reset_current()
 
     def _execute_step(self, step: dict[str, Any], step_index: int, context: StepContext) -> None:
+        secao = step.get("secao")
+        if secao is not None:
+            self.log(f"{'━' * 6} {secao} {'━' * 6}", ConsoleTag.SECTION.value)
+            return
+
         info = str(step.get("info") or step.get("obs") or f"Item {step_index}")
         before_wait, after_wait = self._parse_wait(step.get("esperar"))
-        repeat_count = max(self._parse_repeat(step.get("repetir"), context.iteration_index), 1)
+        repeat_count = max(self._parse_repeat(step.get("repetir"), context), 1)
         action_kind, action_payload = self._get_action_payload(step)
 
         summary = self._build_step_summary(info, action_kind, action_payload, before_wait, after_wait, repeat_count)
@@ -401,12 +409,12 @@ class ScriptRunner:
             after = float(wait_value["depois"])
         return before, after
 
-    def _parse_repeat(self, repeat_value: Any, iteration_index: int) -> int:
+    def _parse_repeat(self, repeat_value: Any, context: StepContext) -> int:
         if repeat_value in (None, ""):
             return 1
         if isinstance(repeat_value, int):
             return repeat_value
-        return int(self._safe_eval(str(repeat_value).strip(), iteration_index))
+        return int(self._safe_eval(str(repeat_value).strip(), context.iteration_index, context.execution_count))
 
     def _execute_mouse(self, payload: dict[str, Any], context: StepContext) -> None:
         action = str(payload.get("acao", "")).strip().lower()
@@ -643,10 +651,10 @@ class ScriptRunner:
         return cursor.get_current_value(field_name)
 
     def _replace_placeholders(self, text: str, context: StepContext) -> str:
-        return text.replace("{i}", str(context.iteration_index))
+        return text.replace("{i}", str(context.iteration_index)).replace("{count}", str(context.execution_count))
 
     @staticmethod
-    def _safe_eval(expression: str, iteration_index: int) -> int:
+    def _safe_eval(expression: str, iteration_index: int, execution_count: int = 0) -> int:
         _ALLOWED_OPS: dict[type, Any] = {
             ast.Add: operator.add,
             ast.Sub: operator.sub,
@@ -656,14 +664,15 @@ class ScriptRunner:
             ast.Mod: operator.mod,
             ast.Pow: operator.pow,
         }
+        _VARS = {"i": float(iteration_index), "count": float(execution_count)}
 
         def _eval(node: ast.AST) -> float:
             if isinstance(node, ast.Expression):
                 return _eval(node.body)
             if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
                 return float(node.value)
-            if isinstance(node, ast.Name) and node.id == "i":
-                return float(iteration_index)
+            if isinstance(node, ast.Name) and node.id in _VARS:
+                return _VARS[node.id]
             if isinstance(node, ast.BinOp):
                 op_fn = _ALLOWED_OPS.get(type(node.op))
                 if op_fn is None:
@@ -879,6 +888,467 @@ class ScriptEditorWindow(BaseEditorWindow):
         messagebox.showinfo("OK", "Roteiro carregado na tela principal.")
 
 
+class HelpWindow(tk.Toplevel):
+    _BG      = "#0f172a"
+    _BG_CODE = "#1a2744"
+
+    _SECTIONS: list[tuple[str, str]] = [
+        ("Estrutura",    "sec_estrutura"),
+        ("Auxiliares",   "sec_aux"),
+        ("Mouse",        "sec_mouse"),
+        ("Teclado",      "sec_teclado"),
+        ("Printscreen",  "sec_print"),
+        ("Placeholders", "sec_ph"),
+        ("Tabelas CSV",  "sec_tabelas"),
+        ("Exemplos",     "sec_exemplos"),
+    ]
+
+    def __init__(self, master: tk.Tk) -> None:
+        super().__init__(master)
+        self.title("Roterize — Guia de Comandos")
+        self.geometry("980x760")
+        self.configure(bg=self._BG)
+        self.resizable(True, True)
+        self._build()
+
+    # ── Layout ────────────────────────────────────────────────────────────────
+
+    def _build(self) -> None:
+        # Cabeçalho
+        hdr = tk.Frame(self, bg="#1e293b", pady=10)
+        hdr.pack(fill="x")
+        tk.Label(
+            hdr, text="  ROTERIZE  —  Guia de Comandos do Roteiro",
+            bg="#1e293b", fg="#f1f5f9", font=("Segoe UI", 13, "bold"),
+        ).pack(side="left")
+
+        # Nav bar — botões criados APÓS o conteúdo para ter as posições corretas
+        self._nav_frame = tk.Frame(self, bg="#1e293b", pady=5)
+        self._nav_frame.pack(fill="x")
+
+        ttk.Separator(self, orient="horizontal").pack(fill="x")
+
+        # Área de conteúdo
+        frame = tk.Frame(self, bg=self._BG)
+        frame.pack(fill="both", expand=True)
+
+        sb = ttk.Scrollbar(frame)
+        sb.pack(side="right", fill="y")
+
+        self._text = tk.Text(
+            frame,
+            bg=self._BG, fg="#e2e8f0",
+            font=("Segoe UI", 10),
+            wrap="word", state="normal",
+            cursor="arrow",
+            padx=28, pady=20,
+            spacing1=1, spacing3=3,
+            relief="flat",
+            yscrollcommand=sb.set,
+            selectbackground="#334155",
+        )
+        self._text.pack(fill="both", expand=True)
+        sb.config(command=self._text.yview)
+
+        self._section_positions: dict[str, str] = {}
+        self._configure_tags()
+        self._build_content()
+        self._text.config(state="disabled")
+
+        # Cria botões agora que as posições estão capturadas
+        for label, mark in self._SECTIONS:
+            idx = self._section_positions.get(mark, "1.0")
+            tk.Button(
+                self._nav_frame, text=label,
+                bg="#334155", fg="#cbd5e1",
+                activebackground="#475569", activeforeground="#ffffff",
+                relief="flat", padx=10, pady=4,
+                font=("Segoe UI", 9), cursor="hand2",
+                command=lambda i=idx: self._jump(i),
+            ).pack(side="left", padx=(3, 0), pady=2)
+
+    def _jump(self, idx: str) -> None:
+        self._text.see(idx)
+
+    # ── Tags ──────────────────────────────────────────────────────────────────
+
+    def _configure_tags(self) -> None:
+        t = self._text
+        t.tag_configure("h1",     foreground="#fbbf24", font=("Segoe UI", 13, "bold"), spacing1=14, spacing3=4)
+        t.tag_configure("h2",     foreground="#93c5fd", font=("Segoe UI", 11, "bold"), spacing1=10, spacing3=2)
+        t.tag_configure("h3",     foreground="#6ee7b7", font=("Segoe UI", 10, "bold"), spacing1=6)
+        t.tag_configure("body",   foreground="#e2e8f0", font=("Segoe UI", 10))
+        t.tag_configure("muted",  foreground="#94a3b8", font=("Segoe UI", 9))
+        t.tag_configure("tip",    foreground="#fde68a", font=("Segoe UI", 10))
+        t.tag_configure("bullet", foreground="#475569", font=("Segoe UI", 10))
+        t.tag_configure("sep",    foreground="#1e3a5f", font=("Consolas", 9),  spacing1=4, spacing3=8)
+        t.tag_configure("code",
+            foreground="#86efac", font=("Consolas", 10),
+            background=self._BG_CODE,
+            lmargin1=20, lmargin2=20, spacing1=2, spacing3=2,
+        )
+        t.tag_configure("inline",  foreground="#86efac", font=("Consolas", 10), background=self._BG_CODE)
+        t.tag_configure("field",   foreground="#f9a8d4", font=("Consolas", 10, "bold"))
+        t.tag_configure("action",  foreground="#6ee7b7", font=("Consolas", 10, "bold"))
+        t.tag_configure("value",   foreground="#fca5a5", font=("Consolas", 10))
+        t.tag_configure("ph",      foreground="#fbbf24", font=("Consolas", 10, "bold"), background=self._BG_CODE)
+        t.tag_configure("indent",  lmargin1=20, lmargin2=20)
+        t.tag_configure("indent2", lmargin1=36, lmargin2=36)
+
+    # ── Helpers de escrita ────────────────────────────────────────────────────
+
+    def _ins(self, text: str, tag: str = "body") -> None:
+        self._text.insert(tk.END, text, tag)
+
+    def _nl(self, n: int = 1) -> None:
+        self._text.insert(tk.END, "\n" * n)
+
+    def _section(self, label: str, mark: str) -> None:
+        self._section_positions[mark] = self._text.index(tk.END)
+        self._nl()
+        self._ins(f"  {label}\n", "h1")
+        self._ins("  " + "─" * 64 + "\n", "sep")
+
+    def _sub(self, title: str) -> None:
+        self._nl()
+        self._ins(f"  {title}\n", "h2")
+
+    def _sub2(self, title: str) -> None:
+        self._nl()
+        self._ins(f"    {title}\n", "h3")
+
+    def _item(self, label: str, desc: str, label_tag: str = "field") -> None:
+        self._ins("    ")
+        self._ins(label, label_tag)
+        self._ins(f"  →  {desc}\n", "muted")
+
+    def _code(self, src: str) -> None:
+        self._nl()
+        for line in src.strip("\n").split("\n"):
+            self._ins(f"  {line}\n", "code")
+        self._nl()
+
+    def _bullet(self, text: str, tag: str = "body") -> None:
+        self._ins("    • ", "bullet")
+        self._ins(f"{text}\n", tag)
+
+    def _note(self, text: str) -> None:
+        self._ins(f"    ℹ  {text}\n", "muted")
+
+    # ── Conteúdo ──────────────────────────────────────────────────────────────
+
+    def _build_content(self) -> None:
+        self._sec_estrutura()
+        self._sec_auxiliares()
+        self._sec_mouse()
+        self._sec_teclado()
+        self._sec_printscreen()
+        self._sec_placeholders()
+        self._sec_tabelas()
+        self._sec_exemplos()
+
+    # ── 1. Estrutura ──────────────────────────────────────────────────────────
+
+    def _sec_estrutura(self) -> None:
+        self._section("1.  ESTRUTURA GERAL", "sec_estrutura")
+        self._nl()
+        self._ins("  O roteiro é uma ", "body")
+        self._ins("lista JSON", "field")
+        self._ins(" onde cada elemento representa um passo da automação.\n", "body")
+        self._ins("  Cada passo pode conter ", "body")
+        self._ins("uma ação principal", "tip")
+        self._ins(" (mouse, teclado ou printscreen) e campos auxiliares.\n", "body")
+        self._code("""\
+[
+  { "secao": "Bloco 1 — Abrir janela" },
+
+  { "info": "Clicar no campo",
+    "mouse":   { "x": 400, "y": 300, "acao": "clicar_esquerdo" },
+    "esperar": { "depois": 0.3 } },
+
+  { "info": "Digitar valor da tabela",
+    "teclado": { "campo_tabela": "NOME" } },
+
+  { "secao": "Bloco 2 — Salvar" },
+
+  { "info": "Salvar com atalho",
+    "teclado": { "atalho": "ctrl+s" } }
+]""")
+        self._note("Somente 1 ação principal por passo. Nunca combine mouse + teclado no mesmo item.")
+
+    # ── 2. Auxiliares ─────────────────────────────────────────────────────────
+
+    def _sec_auxiliares(self) -> None:
+        self._section("2.  CAMPOS AUXILIARES", "sec_aux")
+
+        self._sub2("info")
+        self._ins("  Descrição exibida no console durante a execução. Não afeta o comportamento.\n", "body")
+        self._code('{ "info": "Abrindo janela de busca", "teclado": { "pressionar": "enter" } }')
+
+        self._sub2("secao")
+        self._ins("  Marcador de bloco lógico. Aparece em ", "body")
+        self._ins("amarelo bold", "tip")
+        self._ins(" no console. Não executa nenhuma ação.\n", "body")
+        self._code('{ "secao": "PARTE 1 — ABRIR OBJETO" }')
+
+        self._sub2("esperar")
+        self._ins("  Pausa em segundos antes e/ou depois da ação.\n", "body")
+        self._code("""\
+{ "info": "...",
+  "teclado": { "pressionar": "enter" },
+  "esperar": { "antes": 0.5, "depois": 1.0 } }""")
+        self._item("antes",  "pausa antes de executar")
+        self._item("depois", "pausa após executar")
+
+        self._sub2("repetir")
+        self._ins("  Repete o passo N vezes. Aceita número ou expressão com variáveis.\n", "body")
+        self._code("""\
+{ "teclado": { "pressionar": "tab" }, "repetir": 3         }
+{ "teclado": { "pressionar": "tab" }, "repetir": "i + 1"   }
+{ "teclado": { "pressionar": "tab" }, "repetir": "count"   }
+{ "teclado": { "pressionar": "tab" }, "repetir": "count*2" }""")
+        self._item("i",     "índice da iteração atual (começa em 0)", "ph")
+        self._item("count", "número de execuções acumuladas (começa em 1)", "ph")
+        self._note("Operadores disponíveis:  + − * / // % **")
+
+    # ── 3. Mouse ──────────────────────────────────────────────────────────────
+
+    def _sec_mouse(self) -> None:
+        self._section("3.  AÇÃO MOUSE", "sec_mouse")
+        self._nl()
+        self._ins('  Formato:  ', "muted")
+        self._ins('"mouse": { "x": 800, "y": 500, "acao": "clicar_esquerdo" }', "inline")
+        self._nl(2)
+        self._ins("  Ações disponíveis:\n", "body")
+        acoes = [
+            ("clicar_esquerdo", "clique simples com botão esquerdo"),
+            ("clicar_direito",  "clique simples com botão direito"),
+            ("clicar_duplo",    "duplo clique com botão esquerdo"),
+            ("mover",           "move o cursor sem clicar"),
+            ("clicar_segurar",  "pressiona e segura o botão esquerdo"),
+            ("clicar_soltar",   "solta o botão esquerdo"),
+        ]
+        for acao, desc in acoes:
+            self._ins("    ")
+            self._ins(f"{acao:<20}", "action")
+            self._ins(f"→  {desc}\n", "muted")
+        self._nl()
+        self._note("Drag & drop: use clicar_segurar → mover → clicar_soltar em passos consecutivos.")
+        self._code("""\
+{ "mouse": { "x": 200, "y": 300, "acao": "clicar_segurar" }, "esperar": { "depois": 0.3 } },
+{ "mouse": { "x": 600, "y": 300, "acao": "mover"          }, "esperar": { "depois": 0.1 } },
+{ "mouse": { "x": 600, "y": 300, "acao": "clicar_soltar"  }, "esperar": { "depois": 1.0 } }""")
+
+    # ── 4. Teclado ────────────────────────────────────────────────────────────
+
+    def _sec_teclado(self) -> None:
+        self._section("4.  AÇÃO TECLADO", "sec_teclado")
+        self._nl()
+        self._ins("  O objeto ", "body")
+        self._ins('"teclado"', "field")
+        self._ins(" deve conter exatamente ", "body")
+        self._ins("uma chave", "tip")
+        self._ins(" por passo.\n", "body")
+
+        self._sub2("digitar")
+        self._ins("  Cola um texto no campo com foco. Aceita placeholders.\n", "body")
+        self._code("""\
+{ "teclado": { "digitar": "texto fixo"        } }
+{ "teclado": { "digitar": "Item_{i}"          } }
+{ "teclado": { "digitar": "Execucao_{count}"  } }""")
+
+        self._sub2("atalho")
+        self._ins("  Executa uma combinação de teclas (hotkey).\n", "body")
+        self._code("""\
+{ "teclado": { "atalho": "ctrl+s"       } }
+{ "teclado": { "atalho": "ctrl+shift+a" } }
+{ "teclado": { "atalho": "alt+f4"       } }""")
+
+        self._sub2("pressionar")
+        self._ins("  Pressiona uma única tecla.\n", "body")
+        self._code('{ "teclado": { "pressionar": "enter" } }')
+        self._nl()
+        self._ins("  Teclas comuns: ", "muted")
+        teclas = "enter  tab  esc  space  backspace  delete  up  down  left  right  home  end  pageup  pagedown  F1…F12"
+        self._ins(teclas + "\n", "inline")
+
+        self._sub2("campo_tabela")
+        self._ins("  Lê o próximo registro pendente de uma tabela CSV e cola o valor no campo com foco.\n", "body")
+        self._code("""\
+{ "teclado": { "campo_tabela": "NOME"          } }  ← tabela do dropdown
+{ "teclado": { "campo_tabela": "clientes.EMAIL"} }  ← tabela específica""")
+        self._bullet("Ao concluir a iteração com sucesso  →  STATUS = OK na linha usada")
+        self._bullet("Se houver erro ou interrupção  →  rollback automático, linha volta para a fila")
+        self._bullet("É possível usar mais de uma tabela no mesmo roteiro")
+
+        self._sub2("funcao_py")
+        self._ins("  Aplica uma função de ", "body")
+        self._ins("transformacoes.py", "field")
+        self._ins(" sobre o texto selecionado na tela.\n", "body")
+        self._code('{ "teclado": { "funcao_py": "NOME_DA_FUNCAO" } }')
+        self._note("Fluxo: Ctrl+C  →  função(texto)  →  Ctrl+V com resultado.")
+
+    # ── 5. Printscreen ────────────────────────────────────────────────────────
+
+    def _sec_printscreen(self) -> None:
+        self._section("5.  AÇÃO PRINTSCREEN", "sec_print")
+        self._code("""\
+{ "info": "Capturar tela",
+  "printscreen": {
+    "pasta":        "C:/prints",
+    "nome_arquivo": "Print_[clientes.NOME]_{count}",
+    "formato":      "png",
+    "sobrescrever": true,
+    "regiao": { "x": 0, "y": 0, "largura": 1920, "altura": 1040 }
+  }
+}""")
+        campos = [
+            ("pasta",        "obrigatório",  "caminho da pasta de destino (criada automaticamente se não existir)"),
+            ("nome_arquivo", "obrigatório",  "nome do arquivo sem extensão — aceita [ ] e placeholders"),
+            ("formato",      "png*",         "png  |  jpg  |  jpeg  |  bmp"),
+            ("sobrescrever", "false*",       "true = substitui arquivo existente"),
+            ("regiao",       "opcional",     "captura apenas a área definida por x, y, largura, altura"),
+        ]
+        self._nl()
+        for campo, default, desc in campos:
+            self._ins("    ")
+            self._ins(f"{campo:<16}", "field")
+            self._ins(f"[{default}]  ", "value")
+            self._ins(f"{desc}\n", "muted")
+
+        self._sub2("Valores dinâmicos em nome_arquivo")
+        exemplos = [
+            ("[CAMPO]",         "coluna da tabela selecionada no dropdown"),
+            ("[tabela.CAMPO]",  "coluna de uma tabela específica"),
+            ("{count}",         "número de execuções acumuladas"),
+            ("{i}",             "índice da iteração atual"),
+        ]
+        for token, desc in exemplos:
+            self._ins("    ")
+            self._ins(f"{token:<22}", "ph")
+            self._ins(f"→  {desc}\n", "muted")
+        self._code('"nome_arquivo": "Rel_[clientes.NOME]_exec{count}_iter{i}"')
+
+    # ── 6. Placeholders ───────────────────────────────────────────────────────
+
+    def _sec_placeholders(self) -> None:
+        self._section("6.  PLACEHOLDERS", "sec_ph")
+        self._nl()
+        self._ins("  Disponíveis em: ", "muted")
+        self._ins("digitar  campo_tabela  nome_arquivo  repetir\n", "inline")
+        self._nl()
+        rows = [
+            ("{i}",     "índice da iteração atual dentro da execução  (começa em 0, reseta a cada Executar)"),
+            ("{count}", "contador total de cliques em Executar na sessão  (começa em 1, acumula)"),
+        ]
+        for ph, desc in rows:
+            self._ins("    ")
+            self._ins(f"{ph:<12}", "ph")
+            self._ins(f"{desc}\n", "body")
+        self._code("""\
+{ "teclado": { "digitar":      "Arquivo_{count}_linha_{i}" } }
+{ "teclado": { "campo_tabela": "NOME"                      } }
+{ "printscreen": { "pasta": "C:/prints", "nome_arquivo": "Print_{count}_{i}", "formato": "png" } }
+{ "teclado": { "pressionar": "tab" }, "repetir": "count + i" }""")
+
+    # ── 7. Tabelas CSV ────────────────────────────────────────────────────────
+
+    def _sec_tabelas(self) -> None:
+        self._section("7.  TABELAS CSV", "sec_tabelas")
+        self._nl()
+        self._bullet("Separador preferencial: ponto e vírgula  ( ; )")
+        self._bullet("Deve ter cabeçalho na primeira linha")
+        self._bullet("A coluna STATUS é gerenciada automaticamente pelo app")
+        self._nl()
+        self._code("""\
+ID;NOME;EMAIL;STATUS
+1;João Silva;joao@email.com;OK
+2;Maria Santos;maria@email.com;
+3;Pedro Alves;pedro@email.com;""")
+        self._ins("  Comportamento da coluna STATUS:\n", "h3")
+        self._item("(vazio)",   "registro pendente — será processado na próxima execução", "value")
+        self._item("OK",        "registro já processado — ignorado nas próximas execuções", "action")
+        self._note("Rollback automático: se a iteração falhar ou for interrompida, o STATUS não é gravado.")
+
+    # ── 8. Exemplos ───────────────────────────────────────────────────────────
+
+    def _sec_exemplos(self) -> None:
+        self._section("8.  EXEMPLOS COMPLETOS", "sec_exemplos")
+
+        self._sub("8.1  Fluxo básico com tabela")
+        self._code("""\
+[
+  { "secao": "PREENCHER FORMULÁRIO" },
+
+  { "info": "Clicar no campo nome",
+    "mouse":   { "x": 400, "y": 300, "acao": "clicar_esquerdo" } },
+
+  { "info": "Digitar nome da tabela",
+    "teclado": { "campo_tabela": "NOME" } },
+
+  { "info": "Avançar campo",
+    "teclado": { "pressionar": "tab" } },
+
+  { "info": "Salvar registro",
+    "teclado": { "atalho": "ctrl+s" },
+    "esperar": { "depois": 1.0 } }
+]""")
+
+        self._sub("8.2  Print com nome dinâmico e região")
+        self._code("""\
+[
+  { "secao": "CAPTURAR TELA" },
+
+  { "info": "Aguardar carregamento",
+    "esperar": { "depois": 2.0 } },
+
+  { "info": "Salvar print",
+    "printscreen": {
+      "pasta":        "C:/prints/exec_{count}",
+      "nome_arquivo": "[tabela.CODIGO]_iter{i}",
+      "formato":      "png",
+      "sobrescrever": true,
+      "regiao": { "x": 0, "y": 0, "largura": 1920, "altura": 1040 }
+    }
+  }
+]""")
+
+        self._sub("8.3  Drag and drop")
+        self._code("""\
+[
+  { "secao": "ARRASTAR ELEMENTO" },
+
+  { "info": "Segurar item",
+    "mouse": { "x": 200, "y": 300, "acao": "clicar_segurar" },
+    "esperar": { "depois": 0.3 } },
+
+  { "info": "Mover para destino",
+    "mouse": { "x": 600, "y": 300, "acao": "mover" },
+    "esperar": { "depois": 0.1 } },
+
+  { "info": "Soltar item",
+    "mouse": { "x": 600, "y": 300, "acao": "clicar_soltar" },
+    "esperar": { "depois": 1.5 } }
+]""")
+
+        self._sub("8.4  Múltiplas tabelas + count + secao")
+        self._code("""\
+[
+  { "secao": "EXECUÇÃO {count} — CADASTRO DUPLO" },
+
+  { "info": "Campo A — tabela_a",
+    "teclado": { "campo_tabela": "tabela_a.NOME" } },
+
+  { "info": "Campo B — tabela_b",
+    "teclado": { "campo_tabela": "tabela_b.CODIGO" } },
+
+  { "info": "Confirmar e aguardar",
+    "teclado": { "pressionar": "enter" },
+    "esperar": { "depois": 0.5 } }
+]""")
+        self._nl(3)
+
+
 class AutomationApp(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
@@ -886,12 +1356,13 @@ class AutomationApp(tk.Tk):
         self.geometry("1240x800")
 
         self.script_name_var = tk.StringVar()
-        self.selected_script_var = tk.StringVar()
         self.selected_table_var = tk.StringVar()
         self.start_delay_var = tk.StringVar(value="0")
         self.delay_var = tk.StringVar(value="0.3")
         self.repetitions_var = tk.StringVar(value="1")
-        self.mouse_position_var = tk.StringVar(value="Mouse: X=0 Y=0")
+        self.mouse_position_var = tk.StringVar(value="Mouse: X=0  Y=0")
+        self.execution_count: int = 0
+        self.count_var = tk.StringVar(value="Count: 0")
 
         self.log_queue: queue.Queue[tuple[str, str]] = queue.Queue()
         self.stop_event = threading.Event()
@@ -914,39 +1385,68 @@ class AutomationApp(tk.Tk):
         self.after(100, self.update_mouse_position)
 
     def _build_ui(self) -> None:
-        top = ttk.Frame(self, padding=10)
-        top.pack(fill="x")
+        # ── Menu bar ──────────────────────────────────────────────────────────
+        menubar = tk.Menu(self)
+        cadastros_menu = tk.Menu(menubar, tearoff=0)
+        cadastros_menu.add_command(label="Roteiros", command=self.open_script_editor)
+        cadastros_menu.add_command(label="Tabelas", command=self.open_table_editor)
+        menubar.add_cascade(label="Cadastros", menu=cadastros_menu)
+        help_menu = tk.Menu(menubar, tearoff=0)
+        help_menu.add_command(label="Comandos do Roteiro", command=self.open_help)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        self.config(menu=menubar)
 
-        ttk.Label(top, text="Roteiro salvo:").grid(row=0, column=0, sticky="w", padx=4, pady=4)
-        self.script_combo = ttk.Combobox(top, textvariable=self.selected_script_var, state="readonly", width=30)
-        self.script_combo.grid(row=0, column=1, sticky="we", padx=4, pady=4)
-        ttk.Button(top, text="Carregar", command=self.load_selected_script).grid(row=0, column=2, padx=4, pady=4)
-        ttk.Button(top, text="Salvar como roteiro", command=self.save_script_from_main).grid(row=0, column=3, padx=4, pady=4)
-        ttk.Button(top, text="CRUD Roteiros", command=self.open_script_editor).grid(row=0, column=4, padx=4, pady=4)
-        ttk.Button(top, text="CRUD Tabelas", command=self.open_table_editor).grid(row=0, column=5, padx=4, pady=4)
-        ttk.Button(top, text="Help", command=self.open_help).grid(row=0, column=6, padx=4, pady=4)
+        # ── Toolbar ───────────────────────────────────────────────────────────
+        toolbar = ttk.Frame(self, padding=(10, 8, 10, 4))
+        toolbar.pack(fill="x")
 
-        ttk.Label(top, text="Nome do roteiro atual:").grid(row=1, column=0, sticky="w", padx=4, pady=4)
-        ttk.Entry(top, textvariable=self.script_name_var, width=32).grid(row=1, column=1, sticky="we", padx=4, pady=4)
+        roteiro_lf = ttk.LabelFrame(toolbar, text="Roteiro", padding=6)
+        roteiro_lf.pack(side="left", fill="both", expand=True, padx=(0, 6))
 
-        ttk.Label(top, text="Tabela:").grid(row=1, column=2, sticky="e", padx=4, pady=4)
-        self.table_combo = ttk.Combobox(top, textvariable=self.selected_table_var, state="readonly", width=28)
-        self.table_combo.grid(row=1, column=3, sticky="we", padx=4, pady=4)
+        row0 = ttk.Frame(roteiro_lf)
+        row0.pack(fill="x")
+        ttk.Label(row0, text="Roteiro:").pack(side="left")
+        self.script_combo = ttk.Combobox(row0, textvariable=self.script_name_var, width=30)
+        self.script_combo.pack(side="left", padx=(4, 2))
+        self.script_combo.bind("<<ComboboxSelected>>", lambda _e: self.load_selected_script())
+        ttk.Button(row0, text="Salvar", command=self.save_script_from_main).pack(side="left", padx=2)
 
-        ttk.Label(top, text="Delay inicial (s):").grid(row=1, column=4, sticky="e", padx=4, pady=4)
-        ttk.Entry(top, textvariable=self.start_delay_var, width=10).grid(row=1, column=5, sticky="w", padx=4, pady=4)
+        exec_lf = ttk.LabelFrame(toolbar, text="Execução", padding=6)
+        exec_lf.pack(side="left", fill="y", padx=(6, 0))
 
-        ttk.Label(top, text="Delay entre passos (s):").grid(row=1, column=6, sticky="e", padx=4, pady=4)
-        ttk.Entry(top, textvariable=self.delay_var, width=10).grid(row=1, column=7, sticky="w", padx=4, pady=4)
+        ttk.Label(exec_lf, text="Tabela:").grid(row=0, column=0, sticky="e", padx=(0, 4), pady=2)
+        self.table_combo = ttk.Combobox(exec_lf, textvariable=self.selected_table_var, state="readonly", width=22)
+        self.table_combo.grid(row=0, column=1, columnspan=3, sticky="we", pady=2)
 
-        ttk.Label(top, text="Repetições:").grid(row=1, column=8, sticky="e", padx=4, pady=4)
-        ttk.Entry(top, textvariable=self.repetitions_var, width=10).grid(row=1, column=9, sticky="w", padx=4, pady=4)
+        ttk.Label(exec_lf, text="Delay inicial (s):").grid(row=1, column=0, sticky="e", padx=(0, 4), pady=2)
+        ttk.Entry(exec_lf, textvariable=self.start_delay_var, width=7).grid(row=1, column=1, sticky="w", pady=2)
+        ttk.Label(exec_lf, text="Delay passos (s):").grid(row=1, column=2, sticky="e", padx=(10, 4), pady=2)
+        ttk.Entry(exec_lf, textvariable=self.delay_var, width=7).grid(row=1, column=3, sticky="w", pady=2)
 
-        ttk.Label(top, textvariable=self.mouse_position_var).grid(row=2, column=0, columnspan=10, sticky="w", padx=4, pady=(2, 4))
+        ttk.Label(exec_lf, text="Repetições:").grid(row=2, column=0, sticky="e", padx=(0, 4), pady=2)
+        ttk.Entry(exec_lf, textvariable=self.repetitions_var, width=7).grid(row=2, column=1, sticky="w", pady=2)
 
-        for column in range(10):
-            top.columnconfigure(column, weight=1)
+        # ── Barra de controles ────────────────────────────────────────────────
+        controls = ttk.Frame(self, padding=(10, 4, 10, 6))
+        controls.pack(fill="x")
 
+        tk.Button(
+            controls, text="▶  EXECUTAR", command=self.start_execution,
+            bg="#16a34a", fg="white", activebackground="#15803d", activeforeground="white",
+            font=("Segoe UI", 10, "bold"), relief="flat", padx=14, pady=5, cursor="hand2",
+        ).pack(side="left", padx=(0, 6))
+
+        tk.Button(
+            controls, text="■  PARAR", command=self.stop_execution,
+            bg="#dc2626", fg="white", activebackground="#b91c1c", activeforeground="white",
+            font=("Segoe UI", 10, "bold"), relief="flat", padx=14, pady=5, cursor="hand2",
+        ).pack(side="left", padx=(0, 10))
+
+        ttk.Separator(controls, orient="vertical").pack(side="left", fill="y", padx=8)
+        ttk.Label(controls, textvariable=self.mouse_position_var, font=("Consolas", 11)).pack(side="left", padx=(0, 16))
+        ttk.Label(controls, textvariable=self.count_var, font=("Consolas", 11)).pack(side="left")
+
+        # ── Editor + Console ──────────────────────────────────────────────────
         center = ttk.Panedwindow(self, orient="vertical")
         center.pack(fill="both", expand=True, padx=10, pady=(0, 10))
 
@@ -956,12 +1456,12 @@ class AutomationApp(tk.Tk):
         center.add(console_frame, weight=2)
 
         self._build_script_editor(script_frame)
+        self._build_console(console_frame)
 
-        controls = ttk.Frame(self, padding=(10, 0, 10, 10))
-        controls.pack(fill="x")
-        ttk.Button(controls, text="Executar", command=self.start_execution).pack(side="left", padx=4)
-        ttk.Button(controls, text="Parar", command=self.stop_execution).pack(side="left", padx=4)
-        ttk.Button(controls, text="Limpar console", command=self.clear_console).pack(side="left", padx=4)
+    def _build_console(self, console_frame: ttk.Labelframe) -> None:
+        header = ttk.Frame(console_frame)
+        header.pack(fill="x", padx=6, pady=(4, 0))
+        ttk.Button(header, text="Limpar console", command=self.clear_console).pack(side="right")
 
         self.console_text = tk.Text(
             console_frame,
@@ -975,7 +1475,7 @@ class AutomationApp(tk.Tk):
             pady=8,
             font=("Consolas", 10),
         )
-        self.console_text.pack(fill="both", expand=True, padx=6, pady=6)
+        self.console_text.pack(fill="both", expand=True, padx=6, pady=(4, 6))
         self._configure_console_tags()
 
     def _build_script_editor(self, script_frame: ttk.Labelframe) -> None:
@@ -1039,6 +1539,7 @@ class AutomationApp(tk.Tk):
         self.console_text.tag_configure(ConsoleTag.STEP.value, foreground="#e5e7eb")
         self.console_text.tag_configure(ConsoleTag.ITERATION.value, foreground="#ffffff", font=("Consolas", 10, "bold"))
         self.console_text.tag_configure(ConsoleTag.ELAPSED.value, foreground="#ff6b6b")
+        self.console_text.tag_configure(ConsoleTag.SECTION.value, foreground="#fbbf24", font=("Consolas", 10, "bold"))
 
     def set_script_text(self, content: str) -> None:
         self.script_text.delete("1.0", tk.END)
@@ -1112,25 +1613,13 @@ class AutomationApp(tk.Tk):
             var.set("")
 
     def refresh_script_dropdown(self) -> None:
-        self._refresh_dropdown(self.script_combo, self.selected_script_var, Paths.ROTEIROS_DIR, "*.json")
+        self._refresh_dropdown(self.script_combo, self.script_name_var, Paths.ROTEIROS_DIR, "*.json")
 
     def refresh_table_dropdown(self) -> None:
         self._refresh_dropdown(self.table_combo, self.selected_table_var, Paths.TABELAS_DIR, "*.csv")
 
     def open_help(self) -> None:
-        help_text = self._load_help_text()
-        window = tk.Toplevel(self)
-        window.title("Help - Comandos do Roteiro")
-        window.geometry("980x720")
-        text_widget = tk.Text(window, wrap="word")
-        text_widget.pack(fill="both", expand=True)
-        text_widget.insert("1.0", help_text)
-        text_widget.config(state="disabled")
-
-    def _load_help_text(self) -> str:
-        if Paths.HELP_FILE.exists():
-            return Paths.HELP_FILE.read_text(encoding="utf-8")
-        return "Arquivo de help não encontrado. Verifique help_roteiro.txt."
+        HelpWindow(self)
 
     def open_table_editor(self) -> None:
         TableEditorWindow(self)
@@ -1139,14 +1628,13 @@ class AutomationApp(tk.Tk):
         ScriptEditorWindow(self)
 
     def load_selected_script(self) -> None:
-        name = self.selected_script_var.get().strip()
+        name = self.script_name_var.get().strip()
         if not name:
             return
         path = Paths.ROTEIROS_DIR / f"{name}.json"
         if not path.exists():
             messagebox.showerror("Erro", "Roteiro não encontrado.")
             return
-        self.script_name_var.set(name)
         self.set_script_text(path.read_text(encoding="utf-8"))
         self.log(f"Roteiro carregado: {name}", ConsoleTag.INFO.value)
 
@@ -1162,7 +1650,7 @@ class AutomationApp(tk.Tk):
         path = Paths.ROTEIROS_DIR / f"{name}.json"
         path.write_text(content, encoding="utf-8")
         self.refresh_script_dropdown()
-        self.selected_script_var.set(name)
+        self.script_name_var.set(name)
         self.log(f"Roteiro salvo: {path.name}", ConsoleTag.SUCCESS.value)
         messagebox.showinfo("OK", f"Roteiro salvo: {path.name}")
 
@@ -1182,7 +1670,10 @@ class AutomationApp(tk.Tk):
 
         self.clear_console()
         self.stop_event.clear()
+        self.execution_count += 1
+        self.count_var.set(f"Count: {self.execution_count}")
         selected_table = self.selected_table_var.get().strip() or None
+        execution_count = self.execution_count
 
         runner = ScriptRunner(
             self.log,
@@ -1193,8 +1684,8 @@ class AutomationApp(tk.Tk):
 
         def target() -> None:
             try:
-                self.log("Execução iniciada.", ConsoleTag.INFO.value)
-                runner.run(steps, repetitions, selected_table)
+                self.log(f"Execução iniciada. [count={execution_count}]", ConsoleTag.INFO.value)
+                runner.run(steps, repetitions, selected_table, execution_count)
             except Exception as exc:
                 self.log(f"ERRO: {exc}", ConsoleTag.ERROR.value)
             finally:

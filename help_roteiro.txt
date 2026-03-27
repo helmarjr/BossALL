@@ -1,429 +1,303 @@
-COMANDOS DISPONÍVEIS NO ROTEIRO (JSON)
+╔══════════════════════════════════════════════════════════════╗
+║              ROTERIZE — GUIA DE COMANDOS DO ROTEIRO          ║
+╚══════════════════════════════════════════════════════════════╝
 
-============================================================
-1) ESTRUTURA GERAL
-============================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. ESTRUTURA GERAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-O roteiro deve ser uma LISTA JSON.
+O roteiro é uma LISTA JSON onde cada elemento é um passo.
 
-Exemplo:
 [
-  {
-    "info": "Mover mouse",
-    "esperar": {"antes": 0.3, "depois": 0.2},
-    "mouse": {"x": 250, "y": 620, "acao": "mover"}
-  },
-  {
-    "info": "Clique esquerdo",
-    "mouse": {"x": 250, "y": 620, "acao": "clicar_esquerdo"}
-  },
-  {
-    "info": "Digita texto fixo",
-    "teclado": {"digitar": "Teste"}
-  },
-  {
-    "info": "Salvar print",
-    "printscreen": {
-      "pasta": "C:/prints",
-      "nome_arquivo": "Documento [NOME] 2025",
-      "formato": "png"
-    }
-  }
+  { "secao": "Bloco 1" },
+  { "info": "Clicar no campo", "mouse": {"x": 250, "y": 400, "acao": "clicar_esquerdo"} },
+  { "info": "Digitar valor",   "teclado": {"campo_tabela": "NOME"} },
+  { "info": "Salvar",          "teclado": {"atalho": "ctrl+s"} }
 ]
 
-============================================================
-2) ITENS POSSÍVEIS EM CADA OBJETO DO ROTEIRO
-============================================================
+Regras gerais:
+  • Cada passo pode ter somente 1 ação principal: mouse, teclado OU printscreen.
+  • "info", "esperar", "repetir" e "secao" são auxiliares e podem aparecer em qualquer passo.
+  • Passos sem ação (somente "info" ou "secao") são ignorados pelo motor.
 
-Cada item pode ter:
-- "info"
-- "esperar"
-- "mouse"
-- "teclado"
-- "printscreen"
-- "repetir"
 
-Regras:
-- Cada item deve ter somente 1 ação principal: OU "mouse" OU "teclado" OU "printscreen".
-- Não use mais de uma ação principal no mesmo item.
-- "repetir" repete o item atual.
-- "esperar" pode ser usado antes e/ou depois do item.
-- "info" é apenas descritivo e aparece no console.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. CAMPOS AUXILIARES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-============================================================
-3) DETALHE DE CADA ITEM
-============================================================
+┌─ info ──────────────────────────────────────────────────────┐
+│ Descrição exibida no console durante a execução.            │
+│                                                             │
+│ "info": "Abrindo janela de busca"                           │
+└─────────────────────────────────────────────────────────────┘
 
-3.1) info
-------------------------------------------------------------
-Formato:
-"info": "Texto informacional"
+┌─ secao ─────────────────────────────────────────────────────┐
+│ Marca um bloco lógico no roteiro. Aparece no console com    │
+│ destaque visual (amarelo) e não executa nenhuma ação.       │
+│                                                             │
+│ {"secao": "PARTE 1 — ABRIR VIEW"}                           │
+│ {"secao": "PARTE 2 — TIRAR PRINT"}                          │
+└─────────────────────────────────────────────────────────────┘
 
-3.2) esperar
-------------------------------------------------------------
-Formato:
-"esperar": {
-  "antes": 1,
-  "depois": 1
-}
+┌─ esperar ───────────────────────────────────────────────────┐
+│ Define pausas em segundos antes e/ou depois da ação.        │
+│                                                             │
+│ "esperar": {"antes": 1.0, "depois": 0.5}                    │
+│                                                             │
+│ Subitens:                                                   │
+│   antes  → pausa antes de executar a ação                   │
+│   depois → pausa após executar a ação                       │
+└─────────────────────────────────────────────────────────────┘
 
-Subitens possíveis:
-- antes  -> tempo em segundos antes da ação
-- depois -> tempo em segundos depois da ação
+┌─ repetir ───────────────────────────────────────────────────┐
+│ Repete o passo atual N vezes.                               │
+│                                                             │
+│ "repetir": 3          → repete 3 vezes                      │
+│ "repetir": "i + 1"    → usa o índice da iteração            │
+│ "repetir": "count"    → usa o contador de execuções         │
+│ "repetir": "count*2"  → expressão com count                 │
+│                                                             │
+│ Variáveis disponíveis:                                      │
+│   i     → índice da iteração atual (começa em 0)            │
+│   count → número de execuções acumuladas (começa em 1)      │
+│                                                             │
+│ Operadores: + - * / // % **                                 │
+└─────────────────────────────────────────────────────────────┘
 
-3.3) repetir
-------------------------------------------------------------
-Formatos aceitos:
-"repetir": 3
-"repetir": "3"
-"repetir": "i+1"
 
-Observação:
-- i é o índice da iteração externa, começando em 0.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. AÇÃO MOUSE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-============================================================
-4) ITEM MOUSE
-============================================================
+"mouse": { "x": 800, "y": 500, "acao": "clicar_esquerdo" }
 
-Formato:
-"mouse": {
-  "x": 150,
-  "y": 150,
-  "acao": "clicar_direito"
-}
+Campos obrigatórios: x, y, acao
 
-Subitens possíveis:
-- x
-- y
-- acao
+Ações disponíveis:
+  clicar_esquerdo  → clique simples com botão esquerdo
+  clicar_direito   → clique simples com botão direito
+  clicar_duplo     → duplo clique com botão esquerdo
+  mover            → move o cursor sem clicar
+  clicar_segurar   → pressiona e segura o botão esquerdo
+  clicar_soltar    → solta o botão esquerdo
 
-Ações permitidas em mouse.acao:
-- mover
-- clicar_esquerdo
-- clicar_direito
-- clicar_duplo
-- clicar_segurar
-- clicar_soltar
+Dica — arrastar um elemento:
+  {"mouse": {"x": 200, "y": 300, "acao": "clicar_segurar"}, "esperar": {"depois": 0.3}},
+  {"mouse": {"x": 600, "y": 300, "acao": "mover"},          "esperar": {"depois": 0.1}},
+  {"mouse": {"x": 600, "y": 300, "acao": "clicar_soltar"}}
 
-Observação:
-- Todas as ações de mouse exigem x e y.
 
-============================================================
-5) ITEM TECLADO
-============================================================
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. AÇÃO TECLADO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Formato:
-"teclado": {
-  "digitar": "texto"
-}
+O objeto "teclado" deve ter exatamente UMA chave por passo.
 
-O objeto "teclado" deve ter UMA chave principal por item.
+┌─ digitar ───────────────────────────────────────────────────┐
+│ Cola um texto no campo com foco atual.                      │
+│                                                             │
+│ "teclado": {"digitar": "texto fixo"}                        │
+│ "teclado": {"digitar": "Arquivo_{i}"}                       │
+│ "teclado": {"digitar": "Execucao_{count}"}                  │
+└─────────────────────────────────────────────────────────────┘
 
-Subitens possíveis:
-- digitar
-- atalho
-- pressionar
-- campo_tabela
-- funcao_py
+┌─ atalho ────────────────────────────────────────────────────┐
+│ Executa uma combinação de teclas (hotkey).                  │
+│                                                             │
+│ "teclado": {"atalho": "ctrl+s"}                             │
+│ "teclado": {"atalho": "ctrl+shift+a"}                       │
+│ "teclado": {"atalho": "alt+f4"}                             │
+└─────────────────────────────────────────────────────────────┘
 
-5.1) teclado.digitar
-------------------------------------------------------------
-Digita ou cola um texto no campo atual.
+┌─ pressionar ────────────────────────────────────────────────┐
+│ Pressiona uma única tecla.                                  │
+│                                                             │
+│ "teclado": {"pressionar": "enter"}                          │
+│ "teclado": {"pressionar": "tab"}                            │
+│ "teclado": {"pressionar": "F8"}                             │
+│                                                             │
+│ Teclas comuns:                                              │
+│   enter, tab, esc, space, backspace, delete                 │
+│   up, down, left, right                                     │
+│   home, end, pageup, pagedown                               │
+│   F1 … F12                                                  │
+└─────────────────────────────────────────────────────────────┘
 
-Formato:
-"teclado": {"digitar": "meu texto"}
+┌─ campo_tabela ──────────────────────────────────────────────┐
+│ Lê o próximo registro pendente de uma tabela CSV e cola     │
+│ o valor da coluna indicada no campo com foco.               │
+│                                                             │
+│ Usando tabela selecionada no dropdown:                      │
+│   "teclado": {"campo_tabela": "NOME"}                       │
+│                                                             │
+│ Usando tabela específica:                                   │
+│   "teclado": {"campo_tabela": "clientes.EMAIL"}             │
+│                                                             │
+│ Como funciona:                                              │
+│   1. O app pega o próximo registro com STATUS ≠ OK          │
+│   2. Reserva esse registro para a iteração atual            │
+│   3. Se a iteração concluir sem erros → STATUS = OK         │
+│   4. Se houver erro ou interrupção → registro volta         │
+│      para a fila (rollback automático)                      │
+│   5. É possível usar mais de uma tabela no mesmo roteiro    │
+└─────────────────────────────────────────────────────────────┘
 
-Também aceita placeholder:
-"teclado": {"digitar": "Item_{i}"}
+┌─ funcao_py ─────────────────────────────────────────────────┐
+│ Aplica uma função de transformacoes.py sobre o texto        │
+│ selecionado na tela.                                        │
+│                                                             │
+│ "teclado": {"funcao_py": "NOME_DA_FUNCAO"}                  │
+│                                                             │
+│ Fluxo:                                                      │
+│   1. Copia o texto selecionado (Ctrl+C)                     │
+│   2. Passa para a função definida em transformacoes.py      │
+│   3. Cola o resultado (Ctrl+V) no mesmo campo               │
+└─────────────────────────────────────────────────────────────┘
 
-5.2) teclado.atalho
-------------------------------------------------------------
-Executa hotkey com pyautogui.hotkey.
 
-Exemplos:
-"teclado": {"atalho": "ctrl+s"}
-"teclado": {"atalho": "ctrl+f"}
-"teclado": {"atalho": "ctrl+a"}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. AÇÃO PRINTSCREEN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-5.3) teclado.pressionar
-------------------------------------------------------------
-Pressiona uma tecla específica com pyautogui.press.
-
-Formato:
-"teclado": {"pressionar": "enter"}
-
-Teclas comuns:
-- enter
-- tab
-- up
-- down
-- left
-- right
-- esc
-- backspace
-- delete
-- home
-- end
-- pageup
-- pagedown
-- space
-
-5.4) teclado.campo_tabela
-------------------------------------------------------------
-Busca o próximo registro pendente em uma tabela CSV e usa o valor do campo informado.
-
-Formatos:
-a) usando a tabela selecionada no dropdown:
-"teclado": {"campo_tabela": "NOME"}
-
-b) usando tabela específica:
-"teclado": {"campo_tabela": "clientes.EMAIL"}
-
-Regras:
-1. Sem ponto:
-   - usa a tabela selecionada no dropdown principal
-2. Com ponto:
-   - primeiro nome = nome da tabela sem .csv
-   - segundo nome = coluna
-3. Toda vez que um campo_tabela for usado:
-   - o app captura o próximo registro pendente daquela tabela
-   - o registro fica reservado na iteração atual
-   - ao final da iteração bem-sucedida, STATUS = OK
-4. O app pode usar mais de uma tabela no mesmo roteiro.
-
-5.5) teclado.funcao_py
-------------------------------------------------------------
-Usa uma função do arquivo transformacoes.py.
-
-Formato:
-"teclado": {"funcao_py": "NOME_DA_FUNCAO"}
-
-Comportamento:
-- copia o texto selecionado
-- envia esse texto como input da função
-- recebe o retorno
-- cola o retorno no campo selecionado
-
-============================================================
-6) ITEM PRINTSCREEN
-============================================================
-
-Formato básico:
 "printscreen": {
-  "pasta": "C:/prints",
-  "nome_arquivo": "Documento [clientes.NOME] 2025",
-  "formato": "png"
+  "pasta":        "C:/prints",
+  "nome_arquivo": "Print_[clientes.NOME]_{count}",
+  "formato":      "png",
+  "sobrescrever": true,
+  "regiao": { "x": 0, "y": 0, "largura": 1920, "altura": 1080 }
 }
 
-Subitens possíveis:
-- pasta
-- nome_arquivo
-- formato
-- sobrescrever
-- regiao
+Campos:
+  pasta         (obrigatório) → caminho da pasta de destino
+                                 criada automaticamente se não existir
+  nome_arquivo  (obrigatório) → nome do arquivo sem extensão
+                                 aceita valores dinâmicos com [ ]
+  formato       (opcional)    → png (padrão), jpg, jpeg, bmp
+  sobrescrever  (opcional)    → true/false (padrão: false)
+  regiao        (opcional)    → captura apenas a área indicada
 
-6.1) printscreen.pasta
-------------------------------------------------------------
-Caminho da pasta onde o arquivo será salvo.
+Valores dinâmicos no nome_arquivo:
+  [CAMPO]           → coluna da tabela selecionada no dropdown
+  [tabela.CAMPO]    → coluna de tabela específica
+  {count}           → número de execuções acumuladas
+  {i}               → índice da iteração atual
 
-Exemplo:
-"pasta": "C:/prints"
+  Exemplos:
+    "nome_arquivo": "Documento_2025"
+    "nome_arquivo": "[CODIGO]_[DESCRICAO]"
+    "nome_arquivo": "Print_[clientes.NOME]_{count}"
+    "nome_arquivo": "Execucao_{count}_iter_{i}"
 
-Comportamento:
-- se a pasta não existir, o app tenta criar automaticamente.
 
-6.2) printscreen.nome_arquivo
-------------------------------------------------------------
-Define o nome do arquivo sem a extensão.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. PLACEHOLDERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Pode ser:
-- valor fixo
-- texto com partes dinâmicas vindas da tabela usando colchetes []
+Disponíveis em: digitar, campo_tabela, nome_arquivo, repetir.
 
-Exemplos:
-"nome_arquivo": "Documento 2025"
-"nome_arquivo": "[clientes.NOME]"
-"nome_arquivo": "Documento [clientes.NOME] 2025"
-"nome_arquivo": "Print_[CODIGO]_[DESCRICAO]"
-
-Regra dos colchetes:
-- texto fora de [] = valor fixo
-- texto dentro de [] = valor dinâmico
-- sem colchetes = nome totalmente fixo
-
-Formatos aceitos dentro de []:
-a) usando a tabela selecionada no dropdown:
-[NOME]
-
-b) usando tabela específica:
-[clientes.NOME]
-
-Regras:
-1. Se houver ponto dentro de []:
-   - primeiro nome = nome da tabela sem .csv
-   - segundo nome = coluna
-2. Se não houver ponto dentro de []:
-   - usa a tabela selecionada no dropdown principal
-3. Pode haver um ou vários blocos dinâmicos no mesmo nome.
-4. Caracteres inválidos para nome de arquivo são removidos automaticamente.
-5. A extensão do arquivo vem do campo "formato".
-
-6.3) printscreen.formato
-------------------------------------------------------------
-Define a extensão/formato da imagem.
-
-Formatos aceitos:
-- png
-- jpg
-- jpeg
-- bmp
-
-Exemplo:
-"formato": "png"
-
-Se não informar, o padrão é png.
-
-6.4) printscreen.sobrescrever
-------------------------------------------------------------
-Informa se um arquivo existente pode ser substituído.
+  {i}      → índice da iteração atual dentro da execução (começa em 0)
+  {count}  → contador total de execuções do botão Executar (começa em 1)
+             é persistente entre execuções da mesma sessão
 
 Exemplos:
-"sobrescrever": true
-"sobrescrever": false
+  "digitar": "Item número {i}"
+  "digitar": "Execução {count}, iteração {i}"
+  "nome_arquivo": "Print_{count}_{i}"
+  "repetir": "count + i"
 
-Comportamento:
-- true  -> substitui o arquivo existente
-- false -> gera erro se o arquivo já existir
 
-Se não informar, o padrão é false.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+7. TABELAS CSV
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-6.5) printscreen.regiao
-------------------------------------------------------------
-Permite capturar apenas uma parte da tela.
+  • Separador preferencial: ponto e vírgula ( ; )
+  • Deve ter cabeçalho na primeira linha
+  • A coluna STATUS é gerenciada automaticamente pelo app:
+      — criada se não existir
+      — preenchida com "OK" ao concluir cada iteração com sucesso
+      — registros com STATUS=OK são ignorados nas próximas execuções
+  • Ao registrar erro ou interromper, o registro volta para a fila
 
-Formato:
-"regiao": {
-  "x": 100,
-  "y": 200,
-  "largura": 1200,
-  "altura": 800
-}
 
-Subitens obrigatórios em regiao:
-- x
-- y
-- largura
-- altura
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+8. EXEMPLOS COMPLETOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Comportamento:
-- se informar "regiao", captura apenas aquela área
-- se não informar "regiao", captura a tela inteira
+──── 8.1 Fluxo básico com tabela ────────────────────────────
 
-============================================================
-7) PLACEHOLDERS
-============================================================
-
-Suportado:
-- {i}
-
-Observação:
-- {i} continua disponível em textos normais do roteiro
-- no campo printscreen.nome_arquivo, os valores dinâmicos de tabela usam colchetes []
-
-============================================================
-8) EXEMPLOS COMPLETOS
-============================================================
-
-8.1) Exemplo geral
-------------------------------------------------------------
 [
-  {
-    "info": "Mover até o campo",
-    "esperar": {"antes": 0.3, "depois": 0.2},
-    "mouse": {"x": 250, "y": 620, "acao": "mover"}
-  },
-  {
-    "info": "Clicar no campo",
-    "mouse": {"x": 250, "y": 620, "acao": "clicar_esquerdo"}
-  },
-  {
-    "info": "Digitar valor da tabela padrão",
-    "teclado": {"campo_tabela": "NOME"}
-  },
-  {
-    "info": "Pressionar TAB 2 vezes",
-    "repetir": 2,
-    "teclado": {"pressionar": "tab"}
-  },
-  {
-    "info": "Salvar",
-    "teclado": {"atalho": "ctrl+s"}
-  }
+  {"secao": "PREENCHER FORMULÁRIO"},
+
+  {"info": "Clicar no campo nome",
+   "mouse": {"x": 400, "y": 300, "acao": "clicar_esquerdo"}},
+
+  {"info": "Digitar nome da tabela",
+   "teclado": {"campo_tabela": "NOME"}},
+
+  {"info": "Pressionar Tab",
+   "teclado": {"pressionar": "tab"}},
+
+  {"info": "Salvar registro",
+   "teclado": {"atalho": "ctrl+s"},
+   "esperar": {"depois": 1.0}}
 ]
 
-8.2) Print com nome fixo
-------------------------------------------------------------
+──── 8.2 Print com nome dinâmico ────────────────────────────
+
 [
-  {
-    "info": "Salvar print com nome fixo",
-    "printscreen": {
-      "pasta": "C:/prints",
-      "nome_arquivo": "Documento 2025",
-      "formato": "png",
-      "sobrescrever": false
-    }
-  }
+  {"secao": "CAPTURAR TELA"},
+
+  {"info": "Aguardar carregamento",
+   "esperar": {"depois": 2.0}},
+
+  {"info": "Salvar print",
+   "printscreen": {
+     "pasta":        "C:/prints/execucao_{count}",
+     "nome_arquivo": "[tabela.CODIGO]_{i}",
+     "formato":      "png",
+     "sobrescrever": true,
+     "regiao": {"x": 0, "y": 0, "largura": 1920, "altura": 1040}
+   }}
 ]
 
-8.3) Print com nome vindo da tabela padrão
-------------------------------------------------------------
+──── 8.3 Arrastar elemento ──────────────────────────────────
+
 [
-  {
-    "info": "Salvar print com nome da tabela padrão",
-    "printscreen": {
-      "pasta": "C:/prints",
-      "nome_arquivo": "Documento [NOME_PRINT] 2025",
-      "formato": "png"
-    }
-  }
+  {"secao": "DRAG AND DROP"},
+
+  {"info": "Segurar item",
+   "mouse": {"x": 200, "y": 300, "acao": "clicar_segurar"},
+   "esperar": {"depois": 0.3}},
+
+  {"info": "Mover para destino",
+   "mouse": {"x": 600, "y": 300, "acao": "mover"},
+   "esperar": {"depois": 0.1}},
+
+  {"info": "Soltar item",
+   "mouse": {"x": 600, "y": 300, "acao": "clicar_soltar"},
+   "esperar": {"depois": 1.5}}
 ]
 
-8.4) Print com nome vindo de tabela específica
-------------------------------------------------------------
+──── 8.4 Usar count em repetir ──────────────────────────────
+
 [
-  {
-    "info": "Salvar print com nome da tabela específica",
-    "printscreen": {
-      "pasta": "C:/prints",
-      "nome_arquivo": "Documento [caracracha_1.NOME_PRINT] 2025",
-      "formato": "png"
-    }
-  }
+  {"info": "Pressionar Tab conforme execução",
+   "teclado": {"pressionar": "tab"},
+   "repetir": "count"}
 ]
 
-8.5) Print de região específica
-------------------------------------------------------------
+──── 8.5 Múltiplas tabelas no mesmo roteiro ─────────────────
+
 [
-  {
-    "info": "Salvar print de uma área da tela",
-    "printscreen": {
-      "pasta": "C:/prints",
-      "nome_arquivo": "Tela [CODIGO]",
-      "formato": "png",
-      "regiao": {
-        "x": 100,
-        "y": 200,
-        "largura": 1200,
-        "altura": 800
-      }
-    }
-  }
+  {"secao": "CADASTRO COM DUAS TABELAS"},
+
+  {"info": "Campo A — tabela_a",
+   "teclado": {"campo_tabela": "tabela_a.NOME"}},
+
+  {"info": "Campo B — tabela_b",
+   "teclado": {"campo_tabela": "tabela_b.CODIGO"}},
+
+  {"info": "Confirmar",
+   "teclado": {"pressionar": "enter"},
+   "esperar": {"depois": 0.5}}
 ]
-
-============================================================
-9) REGRAS DAS TABELAS CSV
-============================================================
-
-- Separador preferencial: ;
-- Deve possuir cabeçalho
-- Se STATUS não existir, o app cria
