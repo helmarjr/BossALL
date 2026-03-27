@@ -16,7 +16,7 @@
   },
   {
     "info": "Cola nome CDSView",
-    "teclado": {"campo_tabela": "1515_tabelas.CDS_VIEW"},
+    "teclado": {"campo_tabela": "1515_tabelas_H.CDS_VIEW"},
     "esperar": {"depois": 2.5}
   },
   {
@@ -31,8 +31,8 @@
 {
   "info": "Print Estrutura CDS View",
   "printscreen": {
-    "pasta": "C:/prints",
-    "nome_arquivo": "PRINT_CDS_VIEW_ESTRUTURA_[1515_tabelas.TABELA]",
+    "pasta": "C:/prints/estrutura",
+    "nome_arquivo": "PRINT_CDS_VIEW_ESTRUTURA_[1515_tabelas_H.TABELA]",
     "regiao": {
       "x": 9,
       "y": 180,
@@ -67,8 +67,8 @@
 {
   "info": "Print Preview CDS View",
   "printscreen": {
-    "pasta": "C:/prints",
-    "nome_arquivo": "PRINT_CDS_VIEW_PREVIEW_[1515_tabelas.TABELA]",
+    "pasta": "C:/prints/preview",
+    "nome_arquivo": "PRINT_CDS_VIEW_PREVIEW_[1515_tabelas_H.TABELA]",
     "regiao": {
       "x": 9,
       "y": 180,
