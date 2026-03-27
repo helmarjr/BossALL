@@ -448,7 +448,7 @@ class ScriptRunner:
         action = str(action).strip()
 
         if action == "digitar":
-            text = self._replace_placeholders(str(value), context)
+            text = self._resolve_text_template(str(value), context)
             self._write_text(text)
         elif action == "atalho":
             hotkeys = [part.strip().lower() for part in str(value).split("+") if part.strip()]
@@ -652,6 +652,17 @@ class ScriptRunner:
 
     def _replace_placeholders(self, text: str, context: StepContext) -> str:
         return text.replace("{i}", str(context.iteration_index)).replace("{count}", str(context.execution_count))
+
+    def _resolve_text_template(self, template: str, context: StepContext) -> str:
+        processed = self._replace_placeholders(template, context)
+
+        def replace_match(match: re.Match[str]) -> str:
+            reference = match.group(1).strip()
+            if not reference:
+                raise ValueError("Placeholder de digitar vazio. Use [TABELA.CAMPO] ou [CAMPO].")
+            return self._resolve_field_reference(reference, context)
+
+        return re.sub(r"\[([^\[\]]+)\]", replace_match, processed)
 
     @staticmethod
     def _safe_eval(expression: str, iteration_index: int, execution_count: int = 0) -> int:
@@ -1720,6 +1731,8 @@ class AutomationApp(tk.Tk):
         try:
             x, y = pyautogui.position()
             self.mouse_position_var.set(f"Mouse: X={x} Y={y}")
+            if x <= 10 and y <= 10 and self.worker_thread and self.worker_thread.is_alive():
+                self.stop_execution()
         except Exception:
             self.mouse_position_var.set("Mouse: X=? Y=?")
         self.after(100, self.update_mouse_position)

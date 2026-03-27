@@ -5,59 +5,29 @@
 
 
   {
-    "info": "Foco search",
-    "mouse": {"x": 5310, "y": 1455, "acao": "clicar_esquerdo"},
+    "info": "Clica URL",
+    "mouse": {"x": 3200, "y": 85, "acao": "clicar_esquerdo"},
     "esperar": {"depois": 0.3}
   },
   {
-    "info": "Limpar Search",
+    "info": "Limpar URL",
     "teclado": {"atalho":"ctrl+a"},
-    "esperar": {"depois": 0.5}
+    "esperar": {"depois": 0.3}
   },
   {
-    "info": "Limpar Search",
+    "info": "Limpar URL",
     "teclado": {"atalho":"del"},
-    "esperar": {"depois": 0.5}
+    "esperar": {"depois": 0.3}
   },
   {
     "info": "Cola nome CDSView",
-    "teclado": {"campo_tabela": "1515_tabelas.DS_TABELA"},
+    "teclado": {"digitar": "https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/VALE_S4H_ING/[1515_tabelas.DS_TABELA]"},
     "esperar": {"depois": 0.5}
   },
   {
     "info": "Localizar",
     "teclado": {"pressionar": "enter"},
     "esperar": {"depois": 4}
-  },
- {
-    "info": "Clica na tabela",
-    "mouse": {"x": 4800, "y": 1660, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.3}
-  },
-
-
-{
-  "info": "Print Estrutura CDS View",
-  "printscreen": {
-    "pasta": "C:/prints/ds_tabela",
-    "nome_arquivo": "PRINT_DS_TABELA_[1515_tabelas.TABELA]",
-    "regiao": {
-      "x": 4608,
-      "y": 670,
-      "largura": 1920,
-      "altura": 1200
-    },
-    "formato": "png",
-    "sobrescrever": true
-    },
-  "esperar": {"antes": 7, "depois": 1}
-},
-
- {
-    "info": "volta pra lista",
-    "mouse": {"x": 5200, "y": 875, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.3}
   }
-
 
 ]
