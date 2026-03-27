@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import ast
 import csv
 import json
+import operator
 import queue
 import re
 import threading
@@ -40,6 +42,13 @@ class Paths:
 
 Paths.ensure_dirs()
 pyautogui.FAILSAFE = True
+
+
+def _parse_script_json(content: str) -> list:
+    parsed = json.loads(content)
+    if not isinstance(parsed, list):
+        raise ValueError("O roteiro deve ser uma lista JSON.")
+    return parsed
 
 
 DEFAULT_SCRIPT = """[
@@ -331,20 +340,23 @@ class ScriptRunner:
             parts.append(f"DEPOIS={after_wait}s")
         return " | ".join(parts)
 
-    def _extract_explicit_table_names(self, steps: list[dict[str, Any]]) -> set[str]:
-        table_names: set[str] = set()
+    @staticmethod
+    def _iter_step_field_references(steps: list[dict[str, Any]]):
         for step in steps:
             keyboard = step.get("teclado")
-            if isinstance(keyboard, dict):
-                reference = keyboard.get("campo_tabela")
-                if reference:
-                    table_names.update(self._extract_table_names_from_reference(str(reference)))
-
+            if isinstance(keyboard, dict) and keyboard.get("campo_tabela"):
+                yield "campo", str(keyboard["campo_tabela"])
             printscreen = step.get("printscreen")
-            if isinstance(printscreen, dict):
-                template = printscreen.get("nome_arquivo")
-                if template:
-                    table_names.update(self._extract_table_names_from_template(str(template)))
+            if isinstance(printscreen, dict) and printscreen.get("nome_arquivo"):
+                yield "template", str(printscreen["nome_arquivo"])
+
+    def _extract_explicit_table_names(self, steps: list[dict[str, Any]]) -> set[str]:
+        table_names: set[str] = set()
+        for kind, value in self._iter_step_field_references(steps):
+            if kind == "campo":
+                table_names.update(self._extract_table_names_from_reference(value))
+            else:
+                table_names.update(self._extract_table_names_from_template(value))
         return table_names
 
     def _has_rows_available(
@@ -360,27 +372,20 @@ class ScriptRunner:
 
     def _tables_needed_for_iteration(self, steps: list[dict[str, Any]], default_table: TableCursor | None) -> set[str]:
         table_names: set[str] = set()
-        for step in steps:
-            keyboard = step.get("teclado")
-            if isinstance(keyboard, dict):
-                reference = keyboard.get("campo_tabela")
-                if reference:
-                    raw = str(reference).strip()
-                    if "." in raw:
-                        table_name, _field = raw.split(".", 1)
-                        table_names.add(table_name.strip())
-                    elif default_table is not None:
-                        table_names.add(default_table.name)
-
-            printscreen = step.get("printscreen")
-            if isinstance(printscreen, dict):
-                template = printscreen.get("nome_arquivo")
-                if template:
-                    explicit_tables = self._extract_table_names_from_template(str(template))
-                    if explicit_tables:
-                        table_names.update(explicit_tables)
-                    elif self._template_uses_default_table(str(template)) and default_table is not None:
-                        table_names.add(default_table.name)
+        for kind, value in self._iter_step_field_references(steps):
+            if kind == "campo":
+                raw = value.strip()
+                if "." in raw:
+                    table_name, _field = raw.split(".", 1)
+                    table_names.add(table_name.strip())
+                elif default_table is not None:
+                    table_names.add(default_table.name)
+            else:
+                explicit = self._extract_table_names_from_template(value)
+                if explicit:
+                    table_names.update(explicit)
+                elif self._template_uses_default_table(value) and default_table is not None:
+                    table_names.add(default_table.name)
         return table_names
 
     def _parse_wait(self, wait_value: Any) -> tuple[float, float]:
@@ -548,46 +553,29 @@ class ScriptRunner:
                 return True
         return False
 
-    def _clipboard_copy_with_retry(self, text: str, retries: int = 15, base_delay: float = 0.20) -> None:
+    def _clipboard_op_with_retry(self, op: Callable[[], Any], busy_msg: str, retries: int = 15, base_delay: float = 0.20) -> Any:
         if pyperclip is None:
             raise RuntimeError("pyperclip não está instalado.")
         last_error: Exception | None = None
         for attempt in range(1, retries + 1):
             try:
-                pyperclip.copy(text)
-                return
+                return op()
             except Exception as exc:
                 last_error = exc
                 if attempt < retries:
                     wait_time = base_delay * attempt + random.uniform(0.01, 0.05)
                     self.log(
-                        f"Clipboard ocupado ao copiar. Tentando novamente ({attempt}/{retries}) em {wait_time:.2f}s...",
+                        f"{busy_msg} Tentando novamente ({attempt}/{retries}) em {wait_time:.2f}s...",
                         ConsoleTag.WARNING.value,
                     )
                     time.sleep(wait_time)
-                else:
-                    break
-        raise RuntimeError(f"Falha ao copiar para o clipboard após {retries} tentativas: {last_error}") from last_error
+        raise RuntimeError(f"Falha após {retries} tentativas: {last_error}") from last_error
+
+    def _clipboard_copy_with_retry(self, text: str, retries: int = 15, base_delay: float = 0.20) -> None:
+        self._clipboard_op_with_retry(lambda: pyperclip.copy(text), "Clipboard ocupado ao copiar.", retries, base_delay)
 
     def _clipboard_paste_with_retry(self, retries: int = 15, base_delay: float = 0.20) -> str:
-        if pyperclip is None:
-            raise RuntimeError("pyperclip não está instalado.")
-        last_error: Exception | None = None
-        for attempt in range(1, retries + 1):
-            try:
-                return pyperclip.paste()
-            except Exception as exc:
-                last_error = exc
-                if attempt < retries:
-                    wait_time = base_delay * attempt + random.uniform(0.01, 0.05)
-                    self.log(
-                        f"Clipboard ocupado ao ler. Tentando novamente ({attempt}/{retries}) em {wait_time:.2f}s...",
-                        ConsoleTag.WARNING.value,
-                    )
-                    time.sleep(wait_time)
-                else:
-                    break
-        raise RuntimeError(f"Falha ao ler o clipboard após {retries} tentativas: {last_error}") from last_error
+        return self._clipboard_op_with_retry(pyperclip.paste, "Clipboard ocupado ao ler.", retries, base_delay)
 
     def _paste_via_clipboard(self, text: str) -> None:
         self._clipboard_copy_with_retry(text)
@@ -659,7 +647,34 @@ class ScriptRunner:
 
     @staticmethod
     def _safe_eval(expression: str, iteration_index: int) -> int:
-        return int(eval(expression, {"__builtins__": {}}, {"i": iteration_index}))
+        _ALLOWED_OPS: dict[type, Any] = {
+            ast.Add: operator.add,
+            ast.Sub: operator.sub,
+            ast.Mult: operator.mul,
+            ast.Div: operator.truediv,
+            ast.FloorDiv: operator.floordiv,
+            ast.Mod: operator.mod,
+            ast.Pow: operator.pow,
+        }
+
+        def _eval(node: ast.AST) -> float:
+            if isinstance(node, ast.Expression):
+                return _eval(node.body)
+            if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+                return float(node.value)
+            if isinstance(node, ast.Name) and node.id == "i":
+                return float(iteration_index)
+            if isinstance(node, ast.BinOp):
+                op_fn = _ALLOWED_OPS.get(type(node.op))
+                if op_fn is None:
+                    raise ValueError(f"Operação não suportada: {type(node.op).__name__}")
+                return op_fn(_eval(node.left), _eval(node.right))
+            if isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.USub):
+                return -_eval(node.operand)
+            raise ValueError(f"Expressão inválida em 'repetir': {ast.dump(node)}")
+
+        tree = ast.parse(expression.strip(), mode="eval")
+        return int(_eval(tree))
 
     @staticmethod
     def _require_xy(x: Any, y: Any, action: str) -> None:
@@ -673,6 +688,59 @@ class BaseEditorWindow(tk.Toplevel):
         self.app = master
         self.title(title)
         self.geometry(geometry)
+        self.name_var = tk.StringVar()
+        self.listbox: tk.Listbox
+        self.editor: tk.Text
+
+    def _get_buttons(self) -> list[tuple[str, Callable]]:
+        return []
+
+    def _build_layout(self, name_label: str) -> None:
+        left_frame = ttk.Frame(self)
+        left_frame.pack(side="left", fill="y", padx=8, pady=8)
+        right_frame = ttk.Frame(self)
+        right_frame.pack(side="right", fill="both", expand=True, padx=8, pady=8)
+
+        self.listbox = tk.Listbox(left_frame, width=30)
+        self.listbox.pack(fill="y", expand=True)
+        self.listbox.bind("<<ListboxSelect>>", lambda _event: self.load_selected())
+
+        buttons = ttk.Frame(left_frame)
+        buttons.pack(fill="x", pady=(8, 0))
+        for text, command in self._get_buttons():
+            ttk.Button(buttons, text=text, command=command).pack(fill="x", pady=2)
+
+        top = ttk.Frame(right_frame)
+        top.pack(fill="x")
+        ttk.Label(top, text=name_label).pack(side="left")
+        ttk.Entry(top, textvariable=self.name_var, width=40).pack(side="left", padx=8)
+
+        self.editor = tk.Text(right_frame, wrap="none", undo=True)
+        self.editor.pack(fill="both", expand=True, pady=(8, 0))
+
+    def load_selected(self) -> None:
+        selection = self.listbox.curselection()
+        if not selection:
+            return
+        name = self.listbox.get(selection[0])
+        self.name_var.set(name)
+        self.editor.delete("1.0", tk.END)
+        self.editor.insert("1.0", self._get_file_path(name).read_text(encoding="utf-8"))
+
+    def _get_file_path(self, name: str) -> Path:
+        raise NotImplementedError
+
+    def new_file(self) -> None:
+        raise NotImplementedError
+
+    def save_file(self) -> None:
+        raise NotImplementedError
+
+    def delete_file(self) -> None:
+        raise NotImplementedError
+
+    def refresh_list(self) -> None:
+        raise NotImplementedError
 
     @staticmethod
     def read_file(path: Path) -> str:
@@ -686,53 +754,26 @@ class BaseEditorWindow(tk.Toplevel):
 class TableEditorWindow(BaseEditorWindow):
     def __init__(self, master: "AutomationApp") -> None:
         super().__init__(master, title="CRUD de Tabelas (CSV)", geometry="900x560")
-        self.name_var = tk.StringVar()
-        self.listbox: tk.Listbox
-        self.editor: tk.Text
-        self._build()
+        self._build_layout("Nome do arquivo (sem .csv):")
+        self.editor.insert("1.0", "ID;NOME;STATUS\n1;Exemplo;\n")
         self.refresh_list()
 
-    def _build(self) -> None:
-        left_frame = ttk.Frame(self)
-        left_frame.pack(side="left", fill="y", padx=8, pady=8)
-        right_frame = ttk.Frame(self)
-        right_frame.pack(side="right", fill="both", expand=True, padx=8, pady=8)
+    def _get_buttons(self) -> list[tuple[str, Callable]]:
+        return [
+            ("Novo", self.new_file),
+            ("Importar CSV", self.import_csv),
+            ("Salvar", self.save_file),
+            ("Excluir", self.delete_file),
+            ("Atualizar lista", self.refresh_list),
+        ]
 
-        self.listbox = tk.Listbox(left_frame, width=30)
-        self.listbox.pack(fill="y", expand=True)
-        self.listbox.bind("<<ListboxSelect>>", lambda _event: self.load_selected())
-
-        buttons = ttk.Frame(left_frame)
-        buttons.pack(fill="x", pady=(8, 0))
-        ttk.Button(buttons, text="Novo", command=self.new_file).pack(fill="x", pady=2)
-        ttk.Button(buttons, text="Importar CSV", command=self.import_csv).pack(fill="x", pady=2)
-        ttk.Button(buttons, text="Salvar", command=self.save_file).pack(fill="x", pady=2)
-        ttk.Button(buttons, text="Excluir", command=self.delete_file).pack(fill="x", pady=2)
-        ttk.Button(buttons, text="Atualizar lista", command=self.refresh_list).pack(fill="x", pady=2)
-
-        top = ttk.Frame(right_frame)
-        top.pack(fill="x")
-        ttk.Label(top, text="Nome do arquivo (sem .csv):").pack(side="left")
-        ttk.Entry(top, textvariable=self.name_var, width=40).pack(side="left", padx=8)
-
-        self.editor = tk.Text(right_frame, wrap="none", undo=True)
-        self.editor.pack(fill="both", expand=True, pady=(8, 0))
-        self.editor.insert("1.0", "ID;NOME;STATUS\n1;Exemplo;\n")
+    def _get_file_path(self, name: str) -> Path:
+        return Paths.TABELAS_DIR / f"{name}.csv"
 
     def refresh_list(self) -> None:
         self.listbox.delete(0, tk.END)
         for path in sorted(Paths.TABELAS_DIR.glob("*.csv")):
             self.listbox.insert(tk.END, path.stem)
-
-    def load_selected(self) -> None:
-        selection = self.listbox.curselection()
-        if not selection:
-            return
-        name = self.listbox.get(selection[0])
-        path = Paths.TABELAS_DIR / f"{name}.csv"
-        self.name_var.set(name)
-        self.editor.delete("1.0", tk.END)
-        self.editor.insert("1.0", self.read_file(path))
 
     def new_file(self) -> None:
         self.name_var.set("nova_tabela")
@@ -775,54 +816,27 @@ class TableEditorWindow(BaseEditorWindow):
 class ScriptEditorWindow(BaseEditorWindow):
     def __init__(self, master: "AutomationApp") -> None:
         super().__init__(master, title="CRUD de Roteiros (JSON)", geometry="980x620")
-        self.name_var = tk.StringVar()
-        self.listbox: tk.Listbox
-        self.editor: tk.Text
-        self._build()
+        self._build_layout("Nome do arquivo (sem .json):")
+        self.new_file()
         self.refresh_list()
 
-    def _build(self) -> None:
-        left_frame = ttk.Frame(self)
-        left_frame.pack(side="left", fill="y", padx=8, pady=8)
-        right_frame = ttk.Frame(self)
-        right_frame.pack(side="right", fill="both", expand=True, padx=8, pady=8)
+    def _get_buttons(self) -> list[tuple[str, Callable]]:
+        return [
+            ("Novo", self.new_file),
+            ("Salvar", self.save_file),
+            ("Excluir", self.delete_file),
+            ("Carregar na tela principal", self.load_into_main),
+            ("Atualizar lista", self.refresh_list),
+        ]
 
-        self.listbox = tk.Listbox(left_frame, width=30)
-        self.listbox.pack(fill="y", expand=True)
-        self.listbox.bind("<<ListboxSelect>>", lambda _event: self.load_selected())
-
-        buttons = ttk.Frame(left_frame)
-        buttons.pack(fill="x", pady=(8, 0))
-        ttk.Button(buttons, text="Novo", command=self.new_file).pack(fill="x", pady=2)
-        ttk.Button(buttons, text="Salvar", command=self.save_file).pack(fill="x", pady=2)
-        ttk.Button(buttons, text="Excluir", command=self.delete_file).pack(fill="x", pady=2)
-        ttk.Button(buttons, text="Carregar na tela principal", command=self.load_into_main).pack(fill="x", pady=2)
-        ttk.Button(buttons, text="Atualizar lista", command=self.refresh_list).pack(fill="x", pady=2)
-
-        top = ttk.Frame(right_frame)
-        top.pack(fill="x")
-        ttk.Label(top, text="Nome do arquivo (sem .json):").pack(side="left")
-        ttk.Entry(top, textvariable=self.name_var, width=40).pack(side="left", padx=8)
-
-        self.editor = tk.Text(right_frame, wrap="none", undo=True)
-        self.editor.pack(fill="both", expand=True, pady=(8, 0))
-        self.new_file()
+    def _get_file_path(self, name: str) -> Path:
+        return Paths.ROTEIROS_DIR / f"{name}.json"
 
     def refresh_list(self) -> None:
         self.listbox.delete(0, tk.END)
         for path in sorted(Paths.ROTEIROS_DIR.glob("*.json")):
             self.listbox.insert(tk.END, path.stem)
         self.app.refresh_script_dropdown()
-
-    def load_selected(self) -> None:
-        selection = self.listbox.curselection()
-        if not selection:
-            return
-        name = self.listbox.get(selection[0])
-        path = Paths.ROTEIROS_DIR / f"{name}.json"
-        self.name_var.set(name)
-        self.editor.delete("1.0", tk.END)
-        self.editor.insert("1.0", self.read_file(path))
 
     def new_file(self) -> None:
         self.name_var.set("novo_roteiro")
@@ -837,9 +851,7 @@ class ScriptEditorWindow(BaseEditorWindow):
 
         content = self.editor.get("1.0", tk.END).strip()
         try:
-            parsed = json.loads(content)
-            if not isinstance(parsed, list):
-                raise ValueError("O roteiro deve ser uma lista JSON.")
+            _parse_script_json(content)
         except Exception as exc:
             messagebox.showerror("Erro de JSON", str(exc))
             return
@@ -884,6 +896,8 @@ class AutomationApp(tk.Tk):
         self.log_queue: queue.Queue[tuple[str, str]] = queue.Queue()
         self.stop_event = threading.Event()
         self.worker_thread: threading.Thread | None = None
+        self._highlight_after_id: str | None = None
+        self._last_line_count: int = 0
 
         self.script_text: tk.Text
         self.line_numbers: tk.Text
@@ -1032,7 +1046,9 @@ class AutomationApp(tk.Tk):
         self._refresh_script_view()
 
     def _handle_script_change(self, _event: tk.Event) -> None:
-        self._refresh_script_view()
+        if self._highlight_after_id:
+            self.after_cancel(self._highlight_after_id)
+        self._highlight_after_id = self.after(120, self._refresh_script_view)
 
     def _refresh_script_view(self) -> None:
         self.apply_json_highlight()
@@ -1041,12 +1057,13 @@ class AutomationApp(tk.Tk):
     def _update_line_numbers(self) -> None:
         content = self.script_text.get("1.0", "end-1c")
         line_count = max(1, content.count("\n") + 1)
-        numbers = "\n".join(str(index) for index in range(1, line_count + 1))
-
-        self.line_numbers.config(state="normal")
-        self.line_numbers.delete("1.0", tk.END)
-        self.line_numbers.insert("1.0", numbers)
-        self.line_numbers.config(state="disabled")
+        if line_count != self._last_line_count:
+            self._last_line_count = line_count
+            numbers = "\n".join(str(i) for i in range(1, line_count + 1))
+            self.line_numbers.config(state="normal")
+            self.line_numbers.delete("1.0", tk.END)
+            self.line_numbers.insert("1.0", numbers)
+            self.line_numbers.config(state="disabled")
         self.line_numbers.yview_moveto(self.script_text.yview()[0])
 
     def _on_script_scroll(self, first: str, last: str) -> None:
@@ -1088,17 +1105,17 @@ class AutomationApp(tk.Tk):
             end = f"1.0+{match.end()}c"
             self.script_text.tag_add("json_brace", start, end)
 
+    def _refresh_dropdown(self, combo: ttk.Combobox, var: tk.StringVar, directory: Path, pattern: str) -> None:
+        values = [""] + [path.stem for path in sorted(directory.glob(pattern))]
+        combo["values"] = values
+        if var.get() not in values:
+            var.set("")
+
     def refresh_script_dropdown(self) -> None:
-        values = [""] + [path.stem for path in sorted(Paths.ROTEIROS_DIR.glob("*.json"))]
-        self.script_combo["values"] = values
-        if self.selected_script_var.get() not in values:
-            self.selected_script_var.set("")
+        self._refresh_dropdown(self.script_combo, self.selected_script_var, Paths.ROTEIROS_DIR, "*.json")
 
     def refresh_table_dropdown(self) -> None:
-        values = [""] + [path.stem for path in sorted(Paths.TABELAS_DIR.glob("*.csv"))]
-        self.table_combo["values"] = values
-        if self.selected_table_var.get() not in values:
-            self.selected_table_var.set("")
+        self._refresh_dropdown(self.table_combo, self.selected_table_var, Paths.TABELAS_DIR, "*.csv")
 
     def open_help(self) -> None:
         help_text = self._load_help_text()
@@ -1137,9 +1154,7 @@ class AutomationApp(tk.Tk):
         name = self.script_name_var.get().strip() or "roteiro_principal"
         content = self.script_text.get("1.0", tk.END).strip()
         try:
-            parsed = json.loads(content)
-            if not isinstance(parsed, list):
-                raise ValueError("O roteiro deve ser uma lista JSON.")
+            _parse_script_json(content)
         except Exception as exc:
             messagebox.showerror("Erro de JSON", str(exc))
             return
@@ -1157,9 +1172,7 @@ class AutomationApp(tk.Tk):
             return
 
         try:
-            steps = json.loads(self.script_text.get("1.0", tk.END).strip())
-            if not isinstance(steps, list):
-                raise ValueError("O roteiro deve ser uma lista JSON.")
+            steps = _parse_script_json(self.script_text.get("1.0", tk.END).strip())
             repetitions = int(self.repetitions_var.get())
             float(self.start_delay_var.get())
             float(self.delay_var.get())
