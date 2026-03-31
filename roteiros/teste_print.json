@@ -1,17 +1,14 @@
 [
   {
-  "info": "Salvar print",
-  "printscreen": {
-    "pasta": "C:/prints",
-    "nome_arquivo": "PRINT_CDS_VIEW_[prints.TABELA]",
-    "regiao": {
-      "x": 9,
-      "y": 180,
-      "largura": 1900,
-      "altura": 1900
-    },
-    "formato": "png",
-    "sobrescrever": false
+    "info": "Localizar",
+    "teclado": {"pressionar": "enter"},
+    "esperar": {"depois": 0.3},
+    "repetir": 2
+  },
+{
+    "info": "Business Name texto",
+    "teclado": {"digitar": "{i}"},
+    "esperar": {"depois": 0.1}
   }
-}
+
 ]

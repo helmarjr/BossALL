@@ -4,30 +4,155 @@
   },
 
 
-  {
-    "info": "Clica URL",
-    "mouse": {"x": 3200, "y": 85, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.3}
+ {
+    "info": "Foco no EDGE",
+    "mouse": {"x": 3333, "y": 42, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
   },
-  {
-    "info": "Limpar URL",
-    "teclado": {"atalho":"ctrl+a"},
-    "esperar": {"depois": 0.3}
-  },
-  {
-    "info": "Limpar URL",
-    "teclado": {"atalho":"del"},
-    "esperar": {"depois": 0.3}
+
+
+
+{ "secao": "Prepara primeira URL" },
+
+
+{
+    "info": "Nova ABA",
+    "teclado": {"atalho":"ctrl+t"},
+    "esperar": {"depois": 0}
   },
   {
     "info": "Cola nome CDSView",
-    "teclado": {"digitar": "https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/VALE_S4H_ING/[1515_tabelas.DS_TABELA]"},
-    "esperar": {"depois": 0.5}
+    "teclado": {"digitar": "https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/VALE_S4H_ING/[1515_tabelas1.DS_TABELA]"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Localizar",
+    "teclado": {"pressionar": "enter"},
+    "esperar": {"depois": 0}
+  },
+
+
+
+{ "secao": "Prepara segunda URL" },
+
+{
+    "info": "Nova ABA",
+    "teclado": {"atalho":"ctrl+t"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Cola nome CDSView",
+    "teclado": {"digitar": "https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/VALE_S4H_ING/[1515_tabelas2.DS_TABELA]"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Localizar",
+    "teclado": {"pressionar": "enter"},
+    "esperar": {"depois": 0}
+  },
+
+
+
+{ "secao": "Prepara terceira URL" },
+
+{
+    "info": "Nova ABA",
+    "teclado": {"atalho":"ctrl+t"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Cola nome CDSView",
+    "teclado": {"digitar": "https://valedevdatasphere.us10.hcs.cloud.sap/dwaas-core/index.html#/databuilder&/db/VALE_S4H_ING/[1515_tabelas3.DS_TABELA]"},
+    "esperar": {"depois": 0}
   },
   {
     "info": "Localizar",
     "teclado": {"pressionar": "enter"},
     "esperar": {"depois": 4}
+  },
+
+
+
+
+{ "secao": "Tirar Prints" },
+
+  {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgup"},
+    "esperar": {"depois": 4},
+    "repetir": 2
+  },
+  {
+    "info": "other tab",
+    "teclado": {"atalho":"ctrl+pgdn"},
+    "esperar": {"depois": 4},
+    "repetir": 2
+  },
+
+
+{
+  "info": "Print Estrutura CDS View",
+  "printscreen": {
+    "pasta": "C:/prints/ds_tabela",
+    "nome_arquivo": "PRINT_DS_TABELA_[1515_tabelas1.TABELA]",
+    "regiao": {
+      "x": 1926,
+      "y": 6, 
+      "largura": 1894,
+      "altura": 2143
+    },
+    "formato": "png",
+    "sobrescrever": true
+    },
+  "esperar": {"antes": 1}
+},
+{
+    "info": "Fecha ABA",
+    "teclado": {"atalho":"ctrl+w"},
+    "esperar": {"depois": 0}
+  },
+
+{
+  "info": "Print Estrutura CDS View",
+  "printscreen": {
+    "pasta": "C:/prints/ds_tabela",
+    "nome_arquivo": "PRINT_DS_TABELA_[1515_tabelas2.TABELA]",
+    "regiao": {
+      "x": 1926,
+      "y": 6, 
+      "largura": 1894,
+      "altura": 2143
+    },
+    "formato": "png",
+    "sobrescrever": true
+    },
+  "esperar": {"antes": 1}
+},
+{
+    "info": "Fecha ABA",
+    "teclado": {"atalho":"ctrl+w"},
+    "esperar": {"depois": 0}
+  },
+{
+  "info": "Print Estrutura CDS View",
+  "printscreen": {
+    "pasta": "C:/prints/ds_tabela",
+    "nome_arquivo": "PRINT_DS_TABELA_[1515_tabelas3.TABELA]",
+    "regiao": {
+      "x": 1926,
+      "y": 6, 
+      "largura": 1894,
+      "altura": 2143
+    },
+    "formato": "png",
+    "sobrescrever": true
+    },
+  "esperar": {"antes": 1}
+},
+{
+    "info": "Fecha ABA",
+    "teclado": {"atalho":"ctrl+w"},
+    "esperar": {"depois": 0}
   }
 
 ]

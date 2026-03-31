@@ -1,33 +1,47 @@
 [
   {
-    "obs": "Roteiro para Adicionar CDS Views em Replication Flow"
+    "info": "Roteiro Adiciona CDS Views no Replication Flow"
+  },
+
+
+ {
+    "info": "Foco no EDGE",
+    "mouse": {"x": 2500, "y": 538, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
+
+
+
+{ "secao": "Prepara primeira URL" },
+
+
+{
+    "info": "Seleciona tudo",
+    "teclado": {"atalho":"ctrl+a"},
+    "esperar": {"depois": 0}
   },
   {
-    "obs": "Campo CDS",
-    "x": 340,
-    "y": 535,
-    "acao": "double_click"
+    "info": "Cola nome CDSView",
+    "teclado": {"digitar": "[RF.CDS]"},
+    "esperar": {"depois": 0}
   },
   {
-    "obs": "CSV CDS",
-    "acao": "reg_table:CDS"
+    "info": "Localizar",
+    "teclado": {"pressionar": "enter"},
+    "esperar": {"depois": 5}
   },
-  {
-    "obs": "Pesquisa CDS",
-    "acao": "press:enter"
+
+ {
+    "info": "Seleciona CDS",
+    "mouse": {"x": 3000, "y": 690, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
   },
-  {
-    "obs": "Exemplo",
-    "acao": "wait:4.5"
-  },
-  {
-    "obs": "Seleciona na Lista",
-    "x": 800,
-    "y": 700,
-    "acao": "click"
-  },
-  {
-    "obs": "Exemplo",
-    "acao": "wait:1"
+
+{
+    "info": "Fecha erro",
+    "mouse": {"x": 3050, "y": 1192, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
   }
+
+
 ]

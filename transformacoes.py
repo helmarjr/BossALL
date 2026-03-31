@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 
 
 def manter(texto: str) -> str:
@@ -30,6 +31,12 @@ def capitalizar(texto: str) -> str:
 
 def mandt(texto: str) -> str:
     return f"'500'"
+
+def extrair_tabela_do_from(texto: str) -> str:
+    match = re.search(r'\bFROM\s+([^\s,;()]+)', texto, re.IGNORECASE)
+    if match:
+        return match.group(1)
+    return texto
 
 def trocar_prefixo_tabela_rf(texto: str) -> str:
     """
@@ -63,4 +70,5 @@ TRANSFORMACOES = {
     'capitalizar': capitalizar,
     'trocar_prefixo_tabela_rf': trocar_prefixo_tabela_rf,
     'mandt': mandt,
+    'extrair_tabela_do_from':extrair_tabela_do_from,
 }

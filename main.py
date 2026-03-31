@@ -86,6 +86,7 @@ class StepContext:
     default_table: "TableCursor | None"
     acquired_tables: set[str]
     execution_count: int = 0
+    py_result: str = ""
 
 
 @dataclass
@@ -441,10 +442,12 @@ class ScriptRunner:
             raise ValueError(f"Ação de mouse inválida: {action}")
 
     def _execute_keyboard(self, payload: dict[str, Any], context: StepContext) -> None:
-        if len(payload) != 1:
+        allowed_extras = {"colar"}
+        action_keys = [k for k in payload if k not in allowed_extras]
+        if len(action_keys) != 1:
             raise ValueError("O objeto teclado deve conter somente 1 subitem por passo.")
 
-        action, value = next(iter(payload.items()))
+        action, value = action_keys[0], payload[action_keys[0]]
         action = str(action).strip()
 
         if action == "digitar":
@@ -461,7 +464,8 @@ class ScriptRunner:
             text = self._resolve_field_reference(str(value).strip(), context)
             self._write_text(text)
         elif action == "funcao_py":
-            self._execute_transform_function(str(value).strip())
+            colar = bool(payload.get("colar", True))
+            self._execute_transform_function(str(value).strip(), context, colar)
         else:
             raise ValueError(
                 f"Subitem de teclado inválido: {action}. Use digitar, atalho, pressionar, campo_tabela ou funcao_py."
@@ -590,21 +594,21 @@ class ScriptRunner:
         time.sleep(0.05)
         pyautogui.hotkey("ctrl", "v")
 
-    def _execute_transform_function(self, function_name: str) -> None:
+    def _execute_transform_function(self, function_name: str, context: StepContext, colar: bool = True) -> None:
         if pyperclip is None:
             raise RuntimeError("pyperclip não está instalado. Instale para usar funcao_py.")
         function = TRANSFORMACOES.get(function_name)
         if function is None:
             raise KeyError(f"Função não encontrada em TRANSFORMACOES: {function_name}")
 
-        pyautogui.hotkey("ctrl", "c")
-        time.sleep(0.25)
         original_text = self._clipboard_paste_with_retry()
-        transformed_text = function(original_text)
-        self._clipboard_copy_with_retry(str(transformed_text))
-        time.sleep(0.05)
-        pyautogui.hotkey("ctrl", "v")
-        self.log(f"funcao_py aplicada: {function_name}", ConsoleTag.INFO.value)
+        transformed_text = str(function(original_text))
+        context.py_result = transformed_text
+        self._clipboard_copy_with_retry(transformed_text)
+        if colar:
+            time.sleep(0.05)
+            pyautogui.hotkey("ctrl", "v")
+        self.log(f"funcao_py aplicada: {function_name} → {transformed_text!r}  (colar={colar})", ConsoleTag.INFO.value)
 
     def _write_text(self, text: str) -> None:
         if pyperclip is None:
@@ -651,7 +655,12 @@ class ScriptRunner:
         return cursor.get_current_value(field_name)
 
     def _replace_placeholders(self, text: str, context: StepContext) -> str:
-        return text.replace("{i}", str(context.iteration_index)).replace("{count}", str(context.execution_count))
+        return (
+            text
+            .replace("{i}", str(context.iteration_index))
+            .replace("{count}", str(context.execution_count))
+            .replace("{py}", context.py_result)
+        )
 
     def _resolve_text_template(self, template: str, context: StepContext) -> str:
         processed = self._replace_placeholders(template, context)
@@ -1195,9 +1204,21 @@ class HelpWindow(tk.Toplevel):
         self._sub2("funcao_py")
         self._ins("  Aplica uma função de ", "body")
         self._ins("transformacoes.py", "field")
-        self._ins(" sobre o texto selecionado na tela.\n", "body")
-        self._code('{ "teclado": { "funcao_py": "NOME_DA_FUNCAO" } }')
-        self._note("Fluxo: Ctrl+C  →  função(texto)  →  Ctrl+V com resultado.")
+        self._ins(" sobre o texto que está no clipboard.\n", "body")
+        self._code('{ "teclado": { "atalho": "ctrl+c" }, "esperar": { "depois": 0.5 } }\n{ "teclado": { "funcao_py": "NOME_DA_FUNCAO" } }')
+        self._note("Fluxo: Ctrl+C manual  →  lê clipboard  →  função(texto)  →  Ctrl+V com resultado.")
+        self._nl()
+        self._ins("  Use ", "body")
+        self._ins('"colar": false', "field")
+        self._ins(" para reter o resultado em ", "body")
+        self._ins("{py}", "ph")
+        self._ins(" sem colar automaticamente:\n", "body")
+        self._code("""\
+{ "teclado": { "atalho": "ctrl+c" }, "esperar": { "depois": 0.5 } }
+{ "teclado": { "funcao_py": "extrair_tabela_do_from", "colar": false } }
+{ "printscreen": { "pasta": "C:/prints", "nome_arquivo": "PRINT_{py}", "formato": "png" } }
+{ "teclado": { "pressionar": "ctrl+v" } }  ← cole onde quiser depois""")
+        self._note("{py} fica disponível como placeholder até o fim da iteração.")
 
     # ── 5. Printscreen ────────────────────────────────────────────────────────
 
@@ -1251,6 +1272,7 @@ class HelpWindow(tk.Toplevel):
         rows = [
             ("{i}",     "índice da iteração atual dentro da execução  (começa em 0, reseta a cada Executar)"),
             ("{count}", "contador total de cliques em Executar na sessão  (começa em 1, acumula)"),
+            ("{py}",    "último resultado de funcao_py com colar:false  (reseta a cada iteração)"),
         ]
         for ph, desc in rows:
             self._ins("    ")
@@ -1260,7 +1282,9 @@ class HelpWindow(tk.Toplevel):
 { "teclado": { "digitar":      "Arquivo_{count}_linha_{i}" } }
 { "teclado": { "campo_tabela": "NOME"                      } }
 { "printscreen": { "pasta": "C:/prints", "nome_arquivo": "Print_{count}_{i}", "formato": "png" } }
-{ "teclado": { "pressionar": "tab" }, "repetir": "count + i" }""")
+{ "teclado": { "pressionar": "tab" }, "repetir": "count + i" }
+{ "teclado": { "funcao_py": "extrair_tabela_do_from", "colar": false } }
+{ "printscreen": { "pasta": "C:/prints", "nome_arquivo": "PRINT_{py}_iter{i}", "formato": "png" } }""")
 
     # ── 7. Tabelas CSV ────────────────────────────────────────────────────────
 
@@ -1707,6 +1731,8 @@ class AutomationApp(tk.Tk):
 
     def stop_execution(self) -> None:
         self.stop_event.set()
+        self.execution_count = 0
+        self.count_var.set("Count: 0")
         self.log("Solicitação de parada registrada.", ConsoleTag.WARNING.value)
 
     def clear_console(self) -> None:

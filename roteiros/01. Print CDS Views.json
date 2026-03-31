@@ -3,27 +3,32 @@
     "info": "Roteiro para Printar CDS View no Eclipse"
   },
 
+ {
+    "info": "Abrir CDS View",
+    "teclado": {"pressionar": "enter"},
+    "esperar": {"depois": 4}
+  },
+
 
   {
-    "info": "Foco no eclipse",
+    "info": "Foco texto",
     "mouse": {"x": 1000, "y": 900, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.3}
+    "esperar": {"depois": 0}
   },
   {
-    "info": "Abrir CDS View",
-    "teclado": {"atalho":"ctrl+shift+a"},
-    "esperar": {"depois": 0.5}
+    "info": "seleciona texto",
+    "teclado": {"atalho":"ctrl+a"},
+    "esperar": {"depois": 0}
   },
-  {
-    "info": "Cola nome CDSView",
-    "teclado": {"campo_tabela": "1515_tabelas.CDS_VIEW"},
-    "esperar": {"depois": 2.5}
+ {
+    "info": "Copia o texto",
+    "teclado": {"atalho":"ctrl+c"},
+    "esperar": {"depois": 0}
   },
-  {
-    "info": "Localizar",
-    "teclado": {"pressionar": "enter"},
-    "esperar": {"depois": 0.3},
-    "repetir": 2
+ {
+    "info": "Pega nome da tabela",
+    "teclado": {"funcao_py": "extrair_tabela_do_from", "colar": false},
+    "esperar": {"depois": 0}
   },
 
 
@@ -32,7 +37,7 @@
   "info": "Print Estrutura CDS View",
   "printscreen": {
     "pasta": "C:/prints/estrutura",
-    "nome_arquivo": "PRINT_CDS_VIEW_ESTRUTURA_[1515_tabelas.TABELA]",
+    "nome_arquivo": "PRINT_CDS_VIEW_ESTRUTURA_{py}",
     "regiao": {
       "x": 9,
       "y": 180,
@@ -42,55 +47,31 @@
     "formato": "png",
     "sobrescrever": true
     },
-  "esperar": {"antes": 4, "depois": 0.3}
+  "esperar": {"antes": 0, "depois": 0.3}
 },
 
 
-  {
-    "info": "Menu de opcoes",
-    "mouse": {"x": 1000, "y": 500, "acao": "clicar_direito"},
-    "esperar": {"depois": 0.3}
-  },
-  {
-    "info": "Open With",
-    "mouse": {"x": 1250, "y": 835, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.2}
-  },
-{
-    "info": "Data Preview",
-    "mouse": {"x": 1650, "y": 835, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.2}
-  },
 
+  {
+    "info": "Fecha ABA",
+    "mouse": {"x": 550, "y": 286, "acao": "clicar_direito"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Fecha ABA",
+    "mouse": {"x": 630, "y": 300, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
 
 
 {
-  "info": "Print Preview CDS View",
-  "printscreen": {
-    "pasta": "C:/prints/preview",
-    "nome_arquivo": "PRINT_CDS_VIEW_PREVIEW_[1515_tabelas.TABELA]",
-    "regiao": {
-      "x": 9,
-      "y": 180,
-      "largura": 1900,
-      "altura": 1900
-    },
-    "formato": "png",
-    "sobrescrever": true
-    },
-  "esperar": {"antes": 4, "depois": 0.3}
-},
-
-
-  {
-    "info": "Preparando para fechar janelas",
-    "mouse": {"x": 1000, "y": 285, "acao": "clicar_direito"},
-    "esperar": {"depois": 0.3}
-  },
- {
-    "info": "Fechar todas",
-    "mouse": {"x": 1150, "y": 415, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0.3}
+    "info": "Proxima CDS",
+    "teclado": {"pressionar": "down"},
+    "esperar": {"depois": 0},
+    "repetir": 1 
   }
+
+
+
 
 ]
