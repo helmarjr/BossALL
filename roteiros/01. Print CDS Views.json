@@ -52,8 +52,47 @@
     "formato": "png",
     "sobrescrever": true
     },
-  "esperar": {"antes": 0, "depois": 0.3}
+  "esperar": {"antes": 2, "depois": 0.3}
 },
+
+
+
+  {
+    "info": "menu",
+    "mouse": {"x": 1300, "y": 900, "acao": "clicar_direito"},
+    "esperar": {"depois": 0}
+  },
+
+  {
+    "info": "menu open with",
+    "mouse": {"x": 1515, "y": 1065, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
+ {
+    "info": "menu data preview",
+    "mouse": {"x": 1140, "y": 1065, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
+
+
+{
+  "info": "Print Preview CDS View",
+  "printscreen": {
+    "pasta": "C:/prints/preview",
+    "nome_arquivo": "PRINT_PREVIEW_CDS_VIEW_{py}",
+    "regiao": {
+      "x": 9,
+      "y": 180,
+      "largura": 1900,
+      "altura": 1900
+    },
+    "formato": "png",
+    "sobrescrever": true
+    },
+  "esperar": {"antes": 2, "depois": 0.3}
+},
+
+
 
 
 
@@ -63,8 +102,8 @@
     "esperar": {"depois": 0}
   },
   {
-    "info": "Fecha ABA",
-    "mouse": {"x": 630, "y": 300, "acao": "clicar_esquerdo"},
+    "info": "Fecha ALL ABA",
+    "mouse": {"x": 630, "y": 420, "acao": "clicar_esquerdo"},
     "esperar": {"depois": 0}
   },
 
