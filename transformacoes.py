@@ -35,7 +35,7 @@ def mandt(texto: str) -> str:
 def extrair_tabela_do_from(texto: str) -> str:
     match = re.search(r'\bFROM\s+([^\s,;()]+)', texto, re.IGNORECASE)
     if match:
-        return match.group(1)
+        return match.group(1).upper()
     return texto
 
 def trocar_prefixo_tabela_rf(texto: str) -> str:

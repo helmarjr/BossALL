@@ -25,6 +25,11 @@
     "teclado": {"atalho":"ctrl+c"},
     "esperar": {"depois": 0}
   },
+  {
+    "info": "Foco texto",
+    "mouse": {"x": 1000, "y": 900, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
  {
     "info": "Pega nome da tabela",
     "teclado": {"funcao_py": "extrair_tabela_do_from", "colar": false},
