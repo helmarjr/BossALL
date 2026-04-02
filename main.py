@@ -629,8 +629,11 @@ class ScriptRunner:
             raise ValueError("x e y são obrigatórios para ações de mouse.")
         if isinstance(value, (int, float)):
             return int(value)
-        text = self._replace_placeholders(str(value), context)
-        return int(float(text))
+        text = self._replace_placeholders(str(value).strip(), context)
+        try:
+            return int(float(text))
+        except ValueError:
+            return int(self._safe_eval(text, context.iteration_index, context.execution_count))
 
     def _resolve_field_reference(self, reference: str, context: StepContext) -> str:
         raw_reference = reference.strip()
@@ -1152,6 +1155,21 @@ class HelpWindow(tk.Toplevel):
             self._ins("    ")
             self._ins(f"{acao:<20}", "action")
             self._ins(f"→  {desc}\n", "muted")
+        self._nl()
+        self._ins("  Posicionamento dinâmico:\n", "body")
+        self._ins("  Os campos ", "muted")
+        self._ins("x", "field")
+        self._ins(" e ", "muted")
+        self._ins("y", "field")
+        self._ins(" aceitam expressões com ", "muted")
+        self._ins("{i}", "ph")
+        self._ins(" e ", "muted")
+        self._ins("{count}", "ph")
+        self._ins(":\n", "muted")
+        self._code("""\
+{ "mouse": { "x": 3333, "y": "42 + (i * 20)", "acao": "clicar_esquerdo" } }
+  ↑ i=0 → y=42  |  i=1 → y=62  |  i=2 → y=82""")
+        self._note("Operadores disponíveis:  + − * / // % **")
         self._nl()
         self._note("Drag & drop: use clicar_segurar → mover → clicar_soltar em passos consecutivos.")
         self._code("""\

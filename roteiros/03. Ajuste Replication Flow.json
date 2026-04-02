@@ -1,0 +1,12 @@
+[
+  {
+    "info": "tab",
+    "teclado": {"pressionar": "tab"},
+    "repetir":2
+  },
+{
+    "info": "tab",
+    "teclado": {"pressionar": "down"},
+    "repetir":2
+  }
+]

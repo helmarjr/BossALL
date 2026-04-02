@@ -6,7 +6,7 @@
  {
     "info": "Abrir CDS View",
     "teclado": {"pressionar": "enter"},
-    "esperar": {"depois": 4}
+    "esperar": {"depois": 2}
   },
 
 
@@ -15,11 +15,25 @@
     "mouse": {"x": 1000, "y": 900, "acao": "clicar_esquerdo"},
     "esperar": {"depois": 0}
   },
-  {
-    "info": "seleciona texto",
-    "teclado": {"atalho":"ctrl+a"},
+
+
+ {
+    "info": "seleciona texto 1/3",
+    "mouse": {"x": 1000, "y": 900, "acao": "clicar_segurar"},
     "esperar": {"depois": 0}
   },
+  {
+    "info": "seleciona texto 2/3",
+    "mouse": {"x": 400, "y": 190, "acao": "mover"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "seleciona texto 3/3",
+    "mouse": {"x": 400, "y": 190, "acao": "clicar_soltar"},
+    "esperar": {"depois": 0}
+  },
+
+
  {
     "info": "Copia o texto",
     "teclado": {"atalho":"ctrl+c"},
@@ -73,7 +87,16 @@
     "mouse": {"x": 1140, "y": 1065, "acao": "clicar_esquerdo"},
     "esperar": {"depois": 0}
   },
-
+ {
+    "info": "fecha erro",
+    "mouse": {"x": 1288, "y": 1121, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
+ {
+    "info": "Tira mouse do print",
+    "mouse": {"x": 1140, "y": 195, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
 
 {
   "info": "Print Preview CDS View",
@@ -89,10 +112,8 @@
     "formato": "png",
     "sobrescrever": true
     },
-  "esperar": {"antes": 2, "depois": 0.3}
+  "esperar": {"antes": 20, "depois": 0.3}
 },
-
-
 
 
 
@@ -104,6 +125,16 @@
   {
     "info": "Fecha ALL ABA",
     "mouse": {"x": 630, "y": 420, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Fecha ABA",
+    "mouse": {"x": 550, "y": 286, "acao": "clicar_direito"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Fecha ALL ABA",
+    "mouse": {"x": 630, "y": 305, "acao": "clicar_esquerdo"},
     "esperar": {"depois": 0}
   },
 

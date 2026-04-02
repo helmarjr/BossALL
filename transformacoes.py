@@ -47,6 +47,8 @@ def trocar_prefixo_tabela_rf(texto: str) -> str:
         return ""
 
     texto = str(texto).strip()
+    match = re.match(r'[\w]+', texto)
+    texto = match.group(0) if match else texto
 
     prefixo_antigo = "ZS4_VCI_"
     prefixo_antigo2 = "VC_INTEGRATION_"

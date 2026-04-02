@@ -1,0 +1,56 @@
+[
+  {
+    "info": "Foco",
+    "mouse": {"x": 1800, "y": "544 + (i * 54)", "acao": "clicar_segurar"},
+    "esperar": {"depois": 0.6}
+  },
+  {
+    "info": "pega nome atual 1/3",
+    "mouse": {"x": 1800, "y": "544 + (i * 54)", "acao": "clicar_segurar"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "pega nome atual 1/3",
+    "mouse": {"x": 1380, "y": "544 + (i * 54)", "acao": "mover"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "pega nome atual 1/3",
+    "mouse": {"x": 1380, "y": "544 + (i * 54)", "acao": "clicar_soltar"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Copia nome",
+    "teclado": {"atalho": "ctrl+c"}
+  },
+  {
+    "info": "Pega nome da tabela",
+    "teclado": {"funcao_py": "trocar_prefixo_tabela_rf", "colar": false},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "edita target",
+    "mouse": {"x": 1860, "y": "544 + (i * 54)", "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "edita target",
+    "mouse": {"x": 1700, "y": "635 + (i * 54)", "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 7}
+  },
+  {
+    "info": "search",
+    "mouse": {"x": 420, "y": 254, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 0}
+  },
+  {
+    "info": "Cola nome",
+    "teclado": {"atalho": "ctrl+v"},
+    "esperar": {"depois": 1}
+  },
+  {
+    "info": "Seleciona",
+    "mouse": {"x": 515, "y": 350, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 3}
+  }
+]
