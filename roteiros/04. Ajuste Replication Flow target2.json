@@ -41,12 +41,15 @@
  {
     "info": "Map enter",
     "teclado": {"pressionar": "enter"},
-    "esperar": {"depois": 7}
+    "esperar": {"depois": 4}
   },
-  {
+
+
+ {
     "info": "search",
-    "mouse": {"x": 420, "y": 254, "acao": "clicar_esquerdo"},
-    "esperar": {"depois": 0}
+    "teclado": {"pressionar": "tab"},
+    "esperar": {"depois": 0},
+    "repetir": 2
   },
   {
     "info": "Cola nome",
@@ -58,4 +61,5 @@
     "mouse": {"x": 515, "y": 350, "acao": "clicar_esquerdo"},
     "esperar": {"depois": 3}
   }
+
 ]

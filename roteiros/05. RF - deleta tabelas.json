@@ -1,0 +1,14 @@
+[
+  {
+    "info": "Foco",
+    "mouse": {"x": 594, "y": 2048, "acao": "clicar_esquerdo"},
+    "esperar": {"depois": 1}
+  },
+  
+  {
+    "info": "Confirma Delete",
+    "teclado": {"pressionar": "enter"},
+    "esperar": {"depois": 2}
+  }
+ 
+]
